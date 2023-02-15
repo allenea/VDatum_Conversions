@@ -60,7 +60,9 @@ def grab_nos_data(stid, ref_datum="MLLW", source="web"):
 
     """
     if source == "web":
-        url = f"https://tidesandcurrents.noaa.gov/datums.html?datum={ref_datum}&units=0&epoch=0&id={stid}"
+        url = (f"https://tidesandcurrents.noaa.gov/datums.html?"
+               f"datum={ref_datum}&units=0&epoch=0&id={stid}")
+
         # Send a request to the website
         res = requests.get(url)
 
@@ -104,7 +106,9 @@ def grab_nos_data(stid, ref_datum="MLLW", source="web"):
 
     elif source == "api":
         #FEET
-        api_url = f"https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi/stations/{stid}/datums.json"
+        api_url = (f"https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi/"
+                   f"stations/{stid}/datums.json")
+
         data = json.loads(requests.get(api_url).text)
         try:
             metadata = data['datums']

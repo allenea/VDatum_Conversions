@@ -3,42 +3,9 @@
 Created on Mon Feb  6 15:56:13 2023
 
 @author: ericallen
-
-{0} = site id without US/USGS text in front
-https://waterservices.usgs.gov/nwis/site/?site={0}&format=rdb"
-
-
-#  agency_cd       -- Agency
-#  site_no         -- Site identification number
-#  station_nm      -- Site name
-#  site_tp_cd      -- Site type
-#  dec_lat_va      -- Decimal latitude
-#  dec_long_va     -- Decimal longitude
-#  coord_acy_cd    -- Latitude-longitude accuracy
-#  dec_coord_datum_cd -- Decimal Latitude-longitude datum
-#  alt_va          -- Altitude of Gage/land surface
-#  alt_acy_va      -- Altitude accuracy
-#  alt_datum_cd    -- Altitude datum
-#  huc_cd          -- Hydrologic unit code
-
-Code    Name    Explanation
-NGVD29    V Datum of 1929    National Geodetic Vertical Datum of 1929
-NAVD88    V Datum of 1988    North American Vertical Datum of 1988
-OLDAK    Old Alaska    Old Alaska (Mainland) and Aleutian Island Datum
-OLDPR    Old PR & VI    Old Puerto Rico and Virgin Island Datum
-HILOCAL    Hawaii Local    Local Hawaiian Datum
-GUVD04    Guam Datum    Guam Vertical Datum of 2004
-ASVD02    Am Samoa Datum    American Samoa Vertical Datum of 2002
-NMVD03    N Marianas Datum    Northern Marianas Vertical Datum of 2003
-TIDELOCAL    Tidal Local    Local Tidal Datum
-COE1912    COE Datum 1912    U.S. Corps of Engineers datum adjustment 1912
-IGLD    Gr Lakes Datum    International Great Lakes Datum
-ASLOCAL    *Am Samoa Local    Local American Samoa Datum
-GULOCAL    *Guam Local    Local Guam Datum
 """
 import pandas as pd
 import numpy as np
-#import os
 
 DATA_USGS = {"Ref_Datum":np.nan, 'MHHW':np.nan, 'MHW':np.nan, 'MTL':np.nan,\
              'MSL':np.nan, 'DTL':np.nan, 'MLW':np.nan, 'MLLW':np.nan,\
@@ -62,7 +29,38 @@ def grab_usgs_data(stid):
         from various tidal levels to the given reference datum. If the cleaned data is empty,
         a DataFrame is returned with all values set to NaN.
 
+    {0} = site id without US/USGS text in front
+    https://waterservices.usgs.gov/nwis/site/?site={0}&format=rdb"
 
+
+    #  agency_cd       -- Agency
+    #  site_no         -- Site identification number
+    #  station_nm      -- Site name
+    #  site_tp_cd      -- Site type
+    #  dec_lat_va      -- Decimal latitude
+    #  dec_long_va     -- Decimal longitude
+    #  coord_acy_cd    -- Latitude-longitude accuracy
+    #  dec_coord_datum_cd -- Decimal Latitude-longitude datum
+    #  alt_va          -- Altitude of Gage/land surface
+    #  alt_acy_va      -- Altitude accuracy
+    #  alt_datum_cd    -- Altitude datum
+    #  huc_cd          -- Hydrologic unit code
+
+    Possible Datums:
+        Code    Name    Explanation
+        NGVD29    V Datum of 1929    National Geodetic Vertical Datum of 1929
+        NAVD88    V Datum of 1988    North American Vertical Datum of 1988
+        OLDAK    Old Alaska    Old Alaska (Mainland) and Aleutian Island Datum
+        OLDPR    Old PR & VI    Old Puerto Rico and Virgin Island Datum
+        HILOCAL    Hawaii Local    Local Hawaiian Datum
+        GUVD04    Guam Datum    Guam Vertical Datum of 2004
+        ASVD02    Am Samoa Datum    American Samoa Vertical Datum of 2002
+        NMVD03    N Marianas Datum    Northern Marianas Vertical Datum of 2003
+        TIDELOCAL    Tidal Local    Local Tidal Datum
+        COE1912    COE Datum 1912    U.S. Corps of Engineers datum adjustment 1912
+        IGLD    Gr Lakes Datum    International Great Lakes Datum
+        ASLOCAL    *Am Samoa Local    Local American Samoa Datum
+        GULOCAL    *Guam Local    Local Guam Datum
 
     Parameters
     ----------
@@ -94,7 +92,6 @@ def grab_usgs_data(stid):
 
     else:
         data2 = DATA_USGS.copy()
-        #print(short_id, usgs_df["alt_datum_cd"].values[0], usgs_df["alt_va"].values[0])
         data2[read_usgs["alt_datum_cd"].values[0]]=read_usgs["alt_va"].values[0]
         data2["Ref_Datum"] = read_usgs["alt_datum_cd"].values[0]
         usgs_df = pd.DataFrame(data2, index=["name"])

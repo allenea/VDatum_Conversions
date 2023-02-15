@@ -1,2 +1,8 @@
 
 *.pyc
+
+# Ignore All (xlsx) files
+*.xlsx
+
+# DO-NOT ignore specific file
+!Obs_Locations_Request.xlsx
