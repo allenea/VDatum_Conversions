@@ -76,6 +76,7 @@ def grab_usgs_data(stid):
     short_id = stid[2:]
     # Ping the USGS API for data - data in feet
     api_url = f"https://waterservices.usgs.gov/nwis/site/?site={short_id}&format=rdb"
+
     skiprows = list(range(0,29))
     read_usgs = pd.read_csv(api_url, sep="\t", skiprows=skiprows)
     try:
@@ -84,7 +85,7 @@ def grab_usgs_data(stid):
                'dec_long_va', 'coord_acy_cd', 'dec_coord_datum_cd', 'huc_cd'], axis=1)
         read_usgs = read_usgs.dropna()
     except:
-        print("ERROR: " + api_url)
+        print("USGS ERROR: " + api_url)
         read_usgs = pd.DataFrame()
 
     if read_usgs.empty:

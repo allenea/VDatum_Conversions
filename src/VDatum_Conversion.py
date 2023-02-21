@@ -4,60 +4,16 @@
 Created on Thu Feb  9 16:24:11 2023
 
 @author: ericallen
-
-IF REF_DATUM is NGVD29 and no NAVD88, convert NGVD29 to NAVD88,
-        use the original table to store that,
-    then new column?? used to convert NAVD88 to MLLW...
-    We don't want ref_column to be one thing then have MLLW reference NAVD88//something else'
-
-IF REF DATUM is NAVD88 and there is no MLLW, convert NAVD88 to MLLW
-
-ELSE, store the conversion in the new column going from NAVD88 to MLLW
-
-If REF_DATUM is MLLW - there shouldn't be a NAVD88, so convert to NAVD88
-    - The only way to then go from NAVD88 to MLLW is to use the inverse.
-    We don't want ref_columns to be one thing then have MLLW reference something else
-        Therefore, store in a new column
-
-ELSE OTHER DATUM THAN LISTED, convert to NAVD88 then convert NAVD88 to MLLW using that new column
 """
-#import os
-#import sys
+import os
+import sys
 import pandas as pd
-import json
 import requests
 import numpy as np
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from src.check_url import check_url
+from src.find_exception import find_h_ref_exception
 
-
-def chesapeak_delaware_exception(api_url_text):
-    """THIS IS A REALLY BAD WAY TO DO THIS....
-    Some weird things are happening with expected inputs"""
-
-    for input_h_ref in ["NAD83_2011", "IGS14", "NAD27"]:
-        for target_h_ref in["NAD83_2011", "IGS14", "NAD27"]:
-            tmp_api = api_url_text.format(input_h_ref, target_h_ref)
-            url_check = check_url(tmp_api)
-            if url_check:
-                return input_h_ref, target_h_ref
-
-    print("ERROR: COULD NOT ACCESS API")
-    return None, None
-
-
-def check_url(url):
-    """Checks to make sure the URL is valid and doesn't contain an error code"""
-    try:
-        response = requests.get(url)
-        if response.status_code == 500:
-            return False
-        if response.status_code == 403:
-            return False
-        if  "errorCode" in json.loads(response.text) and \
-            json.loads(response.text)["errorCode"] == 412:
-            return False
-        return True
-    except requests.exceptions.RequestException as err:
-        return f"Request failed: {err}"
 
 
 def convert_datums(metadata, input_v="NAVD88", output_v="MLLW", input_height=None):
@@ -104,8 +60,12 @@ def convert_datums(metadata, input_v="NAVD88", output_v="MLLW", input_height=Non
     metadata : TYPE, dataframe
         DESCRIPTION. Holds all the gage information
 
+    url_list : TYPE, list
+        DESCRIPTION. Holds a list of all the url api calls for future reference
+
     """
-    output_column_header = input_v+"_to_"+output_v
+    output_column_header = input_v + " to " + output_v
+
 
     input_h_coord = "geo"
     input_v_unit = "us_ft"
@@ -114,7 +74,9 @@ def convert_datums(metadata, input_v="NAVD88", output_v="MLLW", input_height=Non
     target_v_unit = "us_ft"
     target_v_elevation = "height"
 
+    url_list = []
     for index, row in metadata.iterrows():
+
         input_region = row["VDatum Regions"]
         s_y = row["Latitude"]
         s_x = row["Longitude"]
@@ -137,11 +99,35 @@ def convert_datums(metadata, input_v="NAVD88", output_v="MLLW", input_height=Non
                f"t_coor={target_h_coord}&t_v_frame={target_v_ref}&"
                f"t_v_unit={target_v_unit}&t_v_elevation={target_v_elevation}")
 
-        if input_region != "chesapeak_delaware":
+        if input_region == "contiguous":
             input_h_ref = "NAD83_2011"
             target_h_ref = "NAD83_2011"
+            input_v_ref = input_v
+
+        elif input_region == "chesapeak_delaware":
+            input_h_ref = "NAD83_2011"
+            target_h_ref = "IGS14"
+            input_v_ref = input_v
+
+        elif input_region == "westcoast":
+            input_h_ref = "NAD83_2011"
+            target_h_ref = "IGS14"
+            input_v_ref = input_v
+
+        elif input_region == "prvi":
+            print("NWM Uses LMSL for Puerto Rico domain")
+            input_v_ref = "LMSL"
+            input_h_ref = "NAD83_2011"
+            target_h_ref = "NAD83_2011"
+
+        elif input_region == "hi":
+            print("VDatum Cannot Handle Conversion from NAVD88 to Tidal Datums for Hawaii")
+            input_v_ref = "LMSL"
+            input_h_ref, target_h_ref = None, None
+
         else:
-            input_h_ref, target_h_ref = chesapeak_delaware_exception(url)
+            print("Triggering find_h_ref_exception")
+            input_h_ref, target_h_ref = find_h_ref_exception(url)
 
         url = (f"https://vdatum.noaa.gov/vdatumweb/api/convert?s_x={s_x}&s_y={s_y}"
                f"&s_z={s_z}&region={input_region}&s_h_frame={input_h_ref}&"
@@ -154,15 +140,21 @@ def convert_datums(metadata, input_v="NAVD88", output_v="MLLW", input_height=Non
         if check_url(url):
             result = requests.get(url).json()
         else:
+            print("PROBLEM WITH: ", url)
             metadata.loc[index, output_column_header] = np.nan
+            url_list.append(url)
             continue
 
         if result["t_z"] == "-999999":
             metadata.loc[index, output_column_header] = "-999999"
+            url_list.append(url)
+
         else:
             metadata.loc[index, output_column_header] = float(result["t_z"]) - s_z
+            url_list.append(url)
 
-    return metadata
+
+    return metadata, url_list
 
 
 
@@ -176,12 +168,19 @@ def convert_from_ref_datum(metadata):
     target_v_unit = "us_ft"
     target_v_elevation = "height"
 
-    columns = ['MHHW', 'MHW', 'MTL','MSL', 'DTL', 'MLW', 'MLLW', 'NAVD88', "NGVD29"]
-    ##TODO REMOVED MSL and STND
+    #Had to remove STND and MSL because those aren't Tidal Datums in VDatum -- added LMSL
+    columns = ['MHHW', 'MHW', 'MTL','LMSL', 'DTL', 'MLW', 'MLLW', 'NAVD88', "NGVD29"]
 
+    tidal_datums = ['MHHW', 'MHW', 'MTL','LMSL', 'DTL', 'MLW', 'MLLW']
+    orthometric_datums = ["NAVD88", "NGVD29", "PRVD02"]
+
+    url_list = []
     for index, row in metadata.iterrows():
 
         if pd.isna(row["Ref_Datum"]):
+            continue
+
+        elif row["Ref_Datum"] == "STND":
             continue
 
         input_v_ref = row['Ref_Datum']
@@ -197,23 +196,93 @@ def convert_from_ref_datum(metadata):
             if column == row["Ref_Datum"]:
                 continue
 
-            if pd.isna(row[column]):
+            if not column in row.index or pd.isna(row[column]):
                 target_v_ref = column
 
                 input_h_ref = "{0}"
                 target_h_ref = "{1}"
 
-                if input_region != "chesapeak_delaware":
-                    input_h_ref = "NAD83_2011"
-                    target_h_ref = "NAD83_2011"
+# =============================================================================
+#
+# =============================================================================
+                if input_region == "contiguous":
+                    if input_v_ref in tidal_datums:
+                        input_h_ref = "NAD83_2011"
+                    elif input_v_ref in orthometric_datums:
+                        input_h_ref = "NAD83_2011"
+                        if input_v_ref == "NGVD29":
+                            input_h_ref = "NAD27"
+                    else:
+                        input_h_ref = "NAD83_2011"
 
-                    if target_v_ref == "NGVD29":
-                        target_h_ref = "NAD27"
+                    if target_v_ref in tidal_datums:
+                        target_h_ref = "NAD83_2011"
+                    elif target_v_ref in orthometric_datums:
+                        target_h_ref = "NAD83_2011"
+                        if target_v_ref == "NGVD29":
+                            target_h_ref = "NAD27"
+                    else:
+                        target_h_ref = "NAD83_2011"
 
-                    if input_v_ref == "NGVD29":
-                        input_h_ref = "NAD27"
+
+                elif input_region == "chesapeak_delaware":
+                    if input_v_ref in tidal_datums:
+                        input_h_ref = "IGS14"
+                    elif input_v_ref in orthometric_datums:
+                        input_h_ref = "NAD83_2011"
+                        if input_v_ref == "NGVD29":
+                            input_h_ref = "NAD27"
+                    else:
+                        input_h_ref = "NAD83_2011"
+
+                    if target_v_ref in tidal_datums:
+                        target_h_ref = "IGS14"
+                    elif target_v_ref in orthometric_datums:
+                        target_h_ref = "NAD83_2011"
+                        if target_v_ref == "NGVD29":
+                            target_h_ref = "NAD27"
+                    else:
+                        target_h_ref = "NAD83_2011"
+
+                elif input_region == "westcoast":
+                    if input_v_ref in tidal_datums:
+                        input_h_ref = "IGS14"
+                    elif input_v_ref in orthometric_datums:
+                        input_h_ref = "NAD83_2011"
+                        if input_v_ref == "NGVD29":
+                            input_h_ref = "NAD27"
+                    else:
+                        input_h_ref = "NAD83_2011"
+
+                    if target_v_ref in tidal_datums:
+                        target_h_ref = "IGS14"
+                    elif target_v_ref in orthometric_datums:
+                        target_h_ref = "NAD83_2011"
+                        if target_v_ref == "NGVD29":
+                            target_h_ref = "NAD27"
+                    else:
+                        target_h_ref = "NAD83_2011"
+
+                elif input_region == "prvi":
+                    #There is no NAVD88 or NGVD29
+                    #start in orthometric
+                    if input_v_ref in tidal_datums:
+                        input_h_ref = "NAD83_2011"
+                    else:
+                        input_h_ref = "NAD83_2011"
+
+                    if target_v_ref in tidal_datums:
+                        target_h_ref = "NAD83_2011"
+                    else:
+                        target_h_ref = "NAD83_2011"
+
+                elif input_region == "hi":
+                    print("WARNING: VDatum Does Not Have Tidal Datums for Hawaii")
+                    input_h_ref, target_h_ref = None, None
 
                 else:
+                    print("Triggering find_h_ref_exception")
+
                     url = (f"https://vdatum.noaa.gov/vdatumweb/api/convert?s_x={s_x}&s_y={s_y}"
                         f"&s_z={s_z}&region={input_region}&s_h_frame={input_h_ref}&"
                         f"s_coor={input_h_coord}&s_v_frame={input_v_ref}&s_v_unit={input_v_unit}&"
@@ -221,7 +290,7 @@ def convert_from_ref_datum(metadata):
                         f"t_coor={target_h_coord}&t_v_frame={target_v_ref}&"
                         f"t_v_unit={target_v_unit}&t_v_elevation={target_v_elevation}")
 
-                    input_h_ref, target_h_ref = chesapeak_delaware_exception(url)
+                    input_h_ref, target_h_ref = find_h_ref_exception(url)
 
 
                 url = (f"https://vdatum.noaa.gov/vdatumweb/api/convert?s_x={s_x}&s_y={s_y}"
@@ -235,42 +304,22 @@ def convert_from_ref_datum(metadata):
                 if check_url(url):
                     result = requests.get(url).json()
                 else:
-                    # try:
-                    #     if input_region == "chesapeak_delaware":
-                    #         print("CBE ERROR")
-                    #     else:
-                    #         print("REG ERROR")
-                    #     response = requests.get(url)
-                    #     print("ERROR : ", json.loads(response.text)["message"])
-                    # except:
-                    #     pass
-
+                    #print("PROBLEM WITH: ", url)
                     metadata.loc[index, column] = np.nan
+                    url_list.append(url)
                     continue
+
 
                 t_z = result["t_z"]
 
-                if t_z != float(np.nan):
+
+                if t_z == "-999999":
+                    metadata.loc[index, column] = np.nan
+                    url_list.append(url)
+
+                elif t_z != float(np.nan):
                     metadata.loc[index, column] = t_z
+                    url_list.append(url)
 
 
-    return metadata
-
-# =============================================================================
-# all_metadata = pd.read_csv(os.path.join(os.getcwd(), "Test_Conversion_Datum_today.csv"), header=0)
-#
-# all_converted_data = convert_datums(all_metadata)
-#
-# reindex_metadata2 = ['NWS HAS', 'rfc', 'state', 'county','VDatum Regions',
-#    'river/water-body name', 'wrr', 'timezone','NWSLI', 'Station ID', 'Location',
-#    'location name', 'Longitude', 'Latitude', 'Site Type', 'Data Source', 'Node', 'Correction',
-#          'Ref_Datum', 'MHHW', 'MHW', 'MTL', 'MSL', 'DTL', 'MLW', 'MLLW',
-#          'NAVD88', 'STND', 'NGVD29', "NAVD88_to_MLLW",
-#          'nrldb vertical datum name', 'nrldb vertical datum', 'navd88 vertical datum',
-#          'ngvd29 vertical datum', 'msl vertical datum', 'other vertical datum',
-#          'elevation', 'action stage', 'flood stage', 'moderate flood stage',
-#          'major flood stage', 'flood stage unit', 'hydrograph page']
-# all_converted_data = all_converted_data.reindex(columns=reindex_metadata2)
-# all_converted_data.to_csv("Test_Conversion_Datum-2.csv", index=False)
-#
-# =============================================================================
+    return metadata, url_list

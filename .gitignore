@@ -3,6 +3,9 @@
 
 # Ignore All (xlsx) files
 *.xlsx
+vdatum/
+VDatum_KML/
+
 
 # DO-NOT ignore specific file
 !Obs_Locations_Request.xlsx
