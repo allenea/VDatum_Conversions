@@ -13,10 +13,11 @@ import numpy as np
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from src.check_url import check_url
 from src.find_exception import find_h_ref_exception
+from src.get_urls import create_hyperlink
 
 
-
-def convert_datums(metadata, input_v="NAVD88", output_v="MLLW", input_height=None):
+def convert_datums(metadata, input_v="NAVD88", output_v="MLLW", input_height=None,\
+                   elevation={'input_v_elevation':'height', "target_v_elevation":'height'}):
     """
     inputlon = "-73.74" #Lon from spreadsheet
     inputlat = "40.59" #Lat from spreadsheet
@@ -69,10 +70,11 @@ def convert_datums(metadata, input_v="NAVD88", output_v="MLLW", input_height=Non
 
     input_h_coord = "geo"
     input_v_unit = "us_ft"
-    input_v_elevation = "height"
     target_h_coord = "geo"
     target_v_unit = "us_ft"
-    target_v_elevation = "height"
+    #removed to shorten urls but left option to include...
+    #input_v_elevation = "height"
+    #target_v_elevation = "height"
 
     url_list = []
     for index, row in metadata.iterrows():
@@ -92,12 +94,22 @@ def convert_datums(metadata, input_v="NAVD88", output_v="MLLW", input_height=Non
         input_h_ref = "{0}"
         target_h_ref = "{1}"
 
-        url = (f"https://vdatum.noaa.gov/vdatumweb/api/convert?s_x={s_x}&s_y={s_y}"
-               f"&s_z={s_z}&region={input_region}&s_h_frame={input_h_ref}&"
-               f"s_coor={input_h_coord}&s_v_frame={input_v_ref}&s_v_unit={input_v_unit}&"
-               f"s_v_elevation={input_v_elevation}&t_h_frame={target_h_ref}&"
-               f"t_coor={target_h_coord}&t_v_frame={target_v_ref}&"
-               f"t_v_unit={target_v_unit}&t_v_elevation={target_v_elevation}")
+        if elevation["input_v_elevation"]=="height" and elevation["target_v_elevation"]=="height":
+
+            url = (f"https://vdatum.noaa.gov/vdatumweb/api/convert?s_x={s_x}&s_y={s_y}"
+                   f"&s_z={s_z}&region={input_region}&s_h_frame={input_h_ref}&"
+                   f"s_coor={input_h_coord}&s_v_frame={input_v_ref}&s_v_unit={input_v_unit}&"
+                   f"t_h_frame={target_h_ref}&"
+                   f"t_coor={target_h_coord}&t_v_frame={target_v_ref}&"
+                   f"t_v_unit={target_v_unit}")
+        else:
+
+            url = (f"https://vdatum.noaa.gov/vdatumweb/api/convert?s_x={s_x}&s_y={s_y}"
+                    f"&s_z={s_z}&region={input_region}&s_h_frame={input_h_ref}&"
+                    f"s_coor={input_h_coord}&s_v_frame={input_v_ref}&s_v_unit={input_v_unit}&"
+                    f"s_v_elevation={elevation['input_v_elevation']}&t_h_frame={target_h_ref}&"
+                    f"t_coor={target_h_coord}&t_v_frame={target_v_ref}&"
+                    f"t_v_unit={target_v_unit}&t_v_elevation={elevation['target_v_elevation']}")
 
         if input_region == "contiguous":
             input_h_ref = "NAD83_2011"
@@ -115,13 +127,13 @@ def convert_datums(metadata, input_v="NAVD88", output_v="MLLW", input_height=Non
             input_v_ref = input_v
 
         elif input_region == "prvi":
-            print("NWM Uses LMSL for Puerto Rico domain")
+            print("WARNING: NWM Uses LMSL for Puerto Rico domain")
             input_v_ref = "LMSL"
             input_h_ref = "NAD83_2011"
             target_h_ref = "NAD83_2011"
 
         elif input_region == "hi":
-            print("VDatum Cannot Handle Conversion from NAVD88 to Tidal Datums for Hawaii")
+            print("ERROR: VDatum Cannot Handle Conversion from NAVD88 to Tidal Datums for Hawaii")
             input_v_ref = "LMSL"
             input_h_ref, target_h_ref = None, None
 
@@ -129,29 +141,40 @@ def convert_datums(metadata, input_v="NAVD88", output_v="MLLW", input_height=Non
             print("Triggering find_h_ref_exception")
             input_h_ref, target_h_ref = find_h_ref_exception(url)
 
-        url = (f"https://vdatum.noaa.gov/vdatumweb/api/convert?s_x={s_x}&s_y={s_y}"
-               f"&s_z={s_z}&region={input_region}&s_h_frame={input_h_ref}&"
-               f"s_coor={input_h_coord}&s_v_frame={input_v_ref}&s_v_unit={input_v_unit}&"
-               f"s_v_elevation={input_v_elevation}&t_h_frame={target_h_ref}&"
-               f"t_coor={target_h_coord}&t_v_frame={target_v_ref}&"
-               f"t_v_unit={target_v_unit}&t_v_elevation={target_v_elevation}")
+
+        if elevation["input_v_elevation"]=="height" and elevation["target_v_elevation"]=="height":
+
+            url = (f"https://vdatum.noaa.gov/vdatumweb/api/convert?s_x={s_x}&s_y={s_y}"
+                   f"&s_z={s_z}&region={input_region}&s_h_frame={input_h_ref}&"
+                   f"s_coor={input_h_coord}&s_v_frame={input_v_ref}&s_v_unit={input_v_unit}&"
+                   f"t_h_frame={target_h_ref}&"
+                   f"t_coor={target_h_coord}&t_v_frame={target_v_ref}&"
+                   f"t_v_unit={target_v_unit}")
+        else:
+
+            url = (f"https://vdatum.noaa.gov/vdatumweb/api/convert?s_x={s_x}&s_y={s_y}"
+                    f"&s_z={s_z}&region={input_region}&s_h_frame={input_h_ref}&"
+                    f"s_coor={input_h_coord}&s_v_frame={input_v_ref}&s_v_unit={input_v_unit}&"
+                    f"s_v_elevation={elevation['input_v_elevation']}&t_h_frame={target_h_ref}&"
+                    f"t_coor={target_h_coord}&t_v_frame={target_v_ref}&"
+                    f"t_v_unit={target_v_unit}&t_v_elevation={elevation['target_v_elevation']}")
 
 
         if check_url(url):
             result = requests.get(url).json()
         else:
-            print("PROBLEM WITH: ", url)
+            #print("PROBLEM WITH: ", url)
             metadata.loc[index, output_column_header] = np.nan
-            url_list.append(url)
+            url_list.append(create_hyperlink(url, "Error"))
             continue
 
         if result["t_z"] == "-999999":
-            metadata.loc[index, output_column_header] = "-999999"
-            url_list.append(url)
+            metadata.loc[index, output_column_header] = -999999
+            url_list.append(create_hyperlink(url, "Missing"))
 
         else:
             metadata.loc[index, output_column_header] = float(result["t_z"]) - s_z
-            url_list.append(url)
+            url_list.append(create_hyperlink(url, output_column_header))
 
 
     return metadata, url_list
@@ -161,9 +184,11 @@ def convert_datums(metadata, input_v="NAVD88", output_v="MLLW", input_height=Non
 
 def convert_from_ref_datum(metadata):
     """Fill in the blanks by converting the reference datum to any un-solved datum conversions"""
+
     input_h_coord = "geo"
     input_v_unit = "us_ft"
     input_v_elevation = "height"
+
     target_h_coord = "geo"
     target_v_unit = "us_ft"
     target_v_elevation = "height"
@@ -172,15 +197,15 @@ def convert_from_ref_datum(metadata):
     columns = ['MHHW', 'MHW', 'MTL','LMSL', 'DTL', 'MLW', 'MLLW', 'NAVD88', "NGVD29"]
 
     tidal_datums = ['MHHW', 'MHW', 'MTL','LMSL', 'DTL', 'MLW', 'MLLW']
+
     orthometric_datums = ["NAVD88", "NGVD29", "PRVD02"]
 
-    url_list = []
     for index, row in metadata.iterrows():
 
         if pd.isna(row["Ref_Datum"]):
             continue
 
-        elif row["Ref_Datum"] == "STND":
+        if row["Ref_Datum"] == "STND":
             continue
 
         input_v_ref = row['Ref_Datum']
@@ -281,32 +306,31 @@ def convert_from_ref_datum(metadata):
                     input_h_ref, target_h_ref = None, None
 
                 else:
-                    print("Triggering find_h_ref_exception")
+                    print("WARNING: Triggering find_h_ref_exception")
 
                     url = (f"https://vdatum.noaa.gov/vdatumweb/api/convert?s_x={s_x}&s_y={s_y}"
-                        f"&s_z={s_z}&region={input_region}&s_h_frame={input_h_ref}&"
-                        f"s_coor={input_h_coord}&s_v_frame={input_v_ref}&s_v_unit={input_v_unit}&"
-                        f"s_v_elevation={input_v_elevation}&t_h_frame={target_h_ref}&"
-                        f"t_coor={target_h_coord}&t_v_frame={target_v_ref}&"
-                        f"t_v_unit={target_v_unit}&t_v_elevation={target_v_elevation}")
+                         f"&s_z={s_z}&region={input_region}&s_h_frame={input_h_ref}&"
+                         f"s_coor={input_h_coord}&s_v_frame={input_v_ref}&s_v_unit={input_v_unit}&"
+                         f"s_v_elevation={input_v_elevation}&t_h_frame={target_h_ref}&"
+                         f"t_coor={target_h_coord}&t_v_frame={target_v_ref}&"
+                         f"t_v_unit={target_v_unit}&t_v_elevation={target_v_elevation}")
 
                     input_h_ref, target_h_ref = find_h_ref_exception(url)
 
 
+
                 url = (f"https://vdatum.noaa.gov/vdatumweb/api/convert?s_x={s_x}&s_y={s_y}"
-                        f"&s_z={s_z}&region={input_region}&s_h_frame={input_h_ref}&"
-                        f"s_coor={input_h_coord}&s_v_frame={input_v_ref}&s_v_unit={input_v_unit}&"
-                        f"s_v_elevation={input_v_elevation}&t_h_frame={target_h_ref}&"
-                        f"t_coor={target_h_coord}&t_v_frame={target_v_ref}&"
-                        f"t_v_unit={target_v_unit}&t_v_elevation={target_v_elevation}")
+                    f"&s_z={s_z}&region={input_region}&s_h_frame={input_h_ref}&"
+                    f"s_coor={input_h_coord}&s_v_frame={input_v_ref}&s_v_unit={input_v_unit}&"
+                    f"s_v_elevation={input_v_elevation}&t_h_frame={target_h_ref}&"
+                    f"t_coor={target_h_coord}&t_v_frame={target_v_ref}&"
+                    f"t_v_unit={target_v_unit}&t_v_elevation={target_v_elevation}")
 
 
                 if check_url(url):
                     result = requests.get(url).json()
                 else:
-                    #print("PROBLEM WITH: ", url)
                     metadata.loc[index, column] = np.nan
-                    url_list.append(url)
                     continue
 
 
@@ -315,11 +339,9 @@ def convert_from_ref_datum(metadata):
 
                 if t_z == "-999999":
                     metadata.loc[index, column] = np.nan
-                    url_list.append(url)
 
                 elif t_z != float(np.nan):
                     metadata.loc[index, column] = t_z
-                    url_list.append(url)
 
 
-    return metadata, url_list
+    return metadata

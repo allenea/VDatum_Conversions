@@ -97,7 +97,7 @@ def grab_usgs_data(stid):
         data2["Ref_Datum"] = read_usgs["alt_datum_cd"].values[0]
         usgs_df = pd.DataFrame(data2, index=["name"])
 
-    return usgs_df
+    return usgs_df, api_url
 
 # =============================================================================
 # df = pd.read_excel(os.path.join(os.getcwd(), "Obs_Locations_Request.xlsx"), header=0)

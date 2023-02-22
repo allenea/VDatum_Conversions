@@ -16,11 +16,13 @@ DATA_NOS = {'Ref_Datum':np.nan, 'MHHW':np.nan, 'MHW':np.nan, 'MTL':np.nan,\
             'MSL':np.nan, 'DTL':np.nan, 'MLW':np.nan, 'MLLW':np.nan,\
                 'NAVD88':np.nan, 'STND':np.nan, "NGVD29":np.nan}
 
+ALT_DATUMS = ['MLLW', 'NAVD88','MHHW', 'MSL', 'STND']
+
 FILTER_LIST = [None, 'GT', 'MN', 'DHQ', 'DLQ', 'HWI', 'LWI', 'Max Tide',\
              'Max Tide Date & Time', 'Min Tide', 'Min Tide Date & Time',\
               'HAT', 'HAT Date & Time', 'LAT', 'LAT Date & Time']
 
-def grab_nos_data(stid, ref_datum="MLLW", source="web"):
+def grab_nos_data(stid, ref_datum="MLLW", source="web", first=True):
     """
     This is a Python script that scrapes tide data from the National Oceanic and
     Atmospheric Administration (NOAA) website. The script uses the BeautifulSoup
@@ -59,6 +61,8 @@ def grab_nos_data(stid, ref_datum="MLLW", source="web"):
             DESCRIPTION.
 
     """
+    ref_datum_out = ref_datum
+
     if source == "web":
         url = (f"https://tidesandcurrents.noaa.gov/datums.html?"
                f"datum={ref_datum}&units=0&epoch=0&id={stid}")
@@ -104,12 +108,26 @@ def grab_nos_data(stid, ref_datum="MLLW", source="web"):
             df_nos = pd.DataFrame(DATA_NOS, index=["name"])
             df_nos["Ref_Datum"] = np.nan
 
+        df_nos = df_nos.reindex(columns=list(DATA_NOS.keys()))
+
+        #This only applied to web data since API is only ever STND (except it says NAVD88)
+        count = 0
+        if first and pd.isna(df_nos[ref_datum]).values[0] and df_nos["STND"].values[0] == 0:
+            while count < len(ALT_DATUMS):
+                df_nos, ref_datum_out = grab_nos_data(stid, ref_datum=ALT_DATUMS[count],\
+                                                      source="web", first=False)
+                if not pd.isna(df_nos[ALT_DATUMS[count]]).values[0]:
+                    print(f"{ref_datum} is unavailable but {ref_datum_out} is available")
+                    break
+                count +=1
+
     elif source == "api":
         #FEET
         api_url = (f"https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi/"
                    f"stations/{stid}/datums.json")
 
         data = json.loads(requests.get(api_url).text)
+
         try:
             metadata = data['datums']
             df_nos = pd.DataFrame.from_dict(metadata)
@@ -120,7 +138,6 @@ def grab_nos_data(stid, ref_datum="MLLW", source="web"):
         if df_nos.empty:
             df_nos = pd.DataFrame(DATA_NOS, index=["name"])
             df_nos["Ref_Datum"] = np.nan
-            #df_nos.insert(loc=0, column="Ref_Datum", value=)
 
         else:
             df_nos = df_nos.drop("description", axis=1)
@@ -130,23 +147,10 @@ def grab_nos_data(stid, ref_datum="MLLW", source="web"):
             drop_list = df_nos.filter(FILTER_LIST)
             df_nos.drop(drop_list, inplace=True, axis=1)
             df_nos.insert(loc=0, column="Ref_Datum", value=data["OrthometricDatum"])
+
+        df_nos = df_nos.reindex(columns=list(DATA_NOS.keys()))
+
     else:
         sys.exit("Invalid source type for get_nos_data, the options are web and api.")
 
-    df_nos = df_nos.reindex(columns=list(DATA_NOS.keys()))
-    return df_nos
-
-# =============================================================================
-# df = pd.read_excel("Obs_Locations_Request.xlsx", header=0)
-#
-# for index, rows in df.iterrows():
-#
-#     station_id = rows["Station ID"]
-#
-#     ## SCRAPING DATA FROM WEB 4 TIDESANDCURRENTS
-#     if rows["Data Source"] == "Tide":
-#         tmp_df = grab_nos_data(station_id, ref_datum="MLLW", source="web")
-#         print(station_id, "\n", tmp_df)
-#     else:
-#         pass
-# =============================================================================
+    return df_nos, ref_datum_out
