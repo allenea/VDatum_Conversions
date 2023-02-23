@@ -4,10 +4,14 @@ Created on Mon Feb  6 15:56:13 2023
 
 @author: ericallen
 """
+import os
+import sys
 import pandas as pd
 import numpy as np
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from src.check_url import check_url
 
-DATA_USGS = {"Ref_Datum":np.nan, 'MHHW':np.nan, 'MHW':np.nan, 'MTL':np.nan,\
+EMPTY_USGS = {"Ref_Datum":np.nan, 'MHHW':np.nan, 'MHW':np.nan, 'MTL':np.nan,\
              'MSL':np.nan, 'DTL':np.nan, 'MLW':np.nan, 'MLLW':np.nan,\
              'NAVD88':np.nan, 'STND':np.nan, "NGVD29":np.nan}
 
@@ -28,6 +32,8 @@ def grab_usgs_data(stid):
         form a new DataFrame. The new DataFrame contains the reference datum and conversions
         from various tidal levels to the given reference datum. If the cleaned data is empty,
         a DataFrame is returned with all values set to NaN.
+
+
 
     {0} = site id without US/USGS text in front
     https://waterservices.usgs.gov/nwis/site/?site={0}&format=rdb"
@@ -64,49 +70,47 @@ def grab_usgs_data(stid):
 
     Parameters
     ----------
-    stid : TYPE
-        DESCRIPTION.
+    stid : str
+        The station identifier.
 
     Returns
     -------
-    usgs_df : TYPE
-        DESCRIPTION.
-
+    usgs_df : pandas.DataFrame
+        A DataFrame containing the reference datum and conversions from various tidal levels
+        to the given reference datum.
+    api_url : str
+        The URL used to retrieve the data.
     """
-    short_id = stid[2:]
+
+    #this is necessary if the US is in front of it...
+    #short_id = stid[2:]
+
     # Ping the USGS API for data - data in feet
-    api_url = f"https://waterservices.usgs.gov/nwis/site/?site={short_id}&format=rdb"
+    api_url = f"https://waterservices.usgs.gov/nwis/site/?site={stid}&format=rdb"
 
-    skiprows = list(range(0,29))
-    read_usgs = pd.read_csv(api_url, sep="\t", skiprows=skiprows)
-    try:
-        read_usgs = read_usgs.drop([0])
-        read_usgs = read_usgs.drop(['agency_cd', 'station_nm', 'site_tp_cd', 'dec_lat_va',\
+    if check_url(api_url):
+        skiprows = list(range(0,29))
+
+        usgs_data = pd.read_csv(api_url, sep="\t", skiprows=skiprows)
+
+        usgs_data = usgs_data.drop([0])
+        usgs_data = usgs_data.drop(['agency_cd', 'station_nm', 'site_tp_cd', 'dec_lat_va',\
                'dec_long_va', 'coord_acy_cd', 'dec_coord_datum_cd', 'huc_cd'], axis=1)
-        read_usgs = read_usgs.dropna()
-    except:
-        print("USGS ERROR: " + api_url)
-        read_usgs = pd.DataFrame()
 
-    if read_usgs.empty:
-        usgs_df = pd.DataFrame(DATA_USGS, index=["name"])
+        #this could make usgs_data.empty True even with a valid url
+        usgs_data = usgs_data.dropna()
 
     else:
-        data2 = DATA_USGS.copy()
-        data2[read_usgs["alt_datum_cd"].values[0]]=read_usgs["alt_va"].values[0]
-        data2["Ref_Datum"] = read_usgs["alt_datum_cd"].values[0]
+        print("USGS ERROR: " + api_url)
+        usgs_data = pd.DataFrame()
+
+    if usgs_data.empty:
+        usgs_df = pd.DataFrame(EMPTY_USGS, index=["name"])
+
+    else:
+        data2 = EMPTY_USGS.copy()
+        data2[usgs_data["alt_datum_cd"].values[0]]=usgs_data["alt_va"].values[0]
+        data2["Ref_Datum"] = usgs_data["alt_datum_cd"].values[0]
         usgs_df = pd.DataFrame(data2, index=["name"])
 
     return usgs_df, api_url
-
-# =============================================================================
-# df = pd.read_excel(os.path.join(os.getcwd(), "Obs_Locations_Request.xlsx"), header=0)
-# for index, row in df.iterrows():
-#     station_id = row["Station ID"]
-#     if row["Data Source"] == "USGS":
-#         tmp_df = grab_usgs_data(station_id)
-#         print(station_id, "\n", tmp_df)
-#     else:
-#         pass
-#
-# =============================================================================

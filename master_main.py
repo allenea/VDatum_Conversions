@@ -76,8 +76,9 @@ for index, row in location_metadata.iterrows():
     station_id = row["Station ID"]
 
     if row["Data Source"] == "USGS":
-        tmp_df, api_url = grab_usgs_data(station_id)
-        station_info_urls.append(create_hyperlink(get_station_info_urls(station_id,\
+        stid_short = station_id[2:]
+        tmp_df, api_url = grab_usgs_data(stid_short)
+        station_info_urls.append(create_hyperlink(get_station_info_urls(stid_short,\
                                                         source="USGS"),"Station Info"))
         station_datum_urls.append(create_hyperlink(api_url, "Datum Info"))
         extra_urls.append(np.nan)
@@ -99,6 +100,8 @@ for index, row in location_metadata.iterrows():
         station_datum_urls.append(np.nan)
         extra_urls.append(np.nan)
 
+
+
     if index == 0:
         combine_df = tmp_df
     else:
@@ -112,9 +115,9 @@ station_metadata["Station Info"] = station_info_urls
 station_metadata["Datum Info"] = station_datum_urls
 station_metadata["Extra Metadata"] = extra_urls
 
-
 #RAW DATA
 station_metadata.to_excel("Raw_Data-All.xlsx", index=False)
+
 # =============================================================================
 # =============================================================================
 # READ IN AHPS CMS METADATA
@@ -157,7 +160,7 @@ all_metadata = all_metadata.drop(columns_to_drop, axis=1)
 # =============================================================================
 # CLEAN UP
 # =============================================================================
-reindex_metadata = ["NWSLI", 'WFO', 'RFC', 'NWS REGION', 'COUNTYNAME', 'STATE', "TIMEZONE",\
+reindex_metadata = ["NWSLI", 'WFO', 'RFC', 'NWS REGION', 'COUNTYNAME', 'STATE', "TIME ZONE",\
                     'river/water-body name', 'wrr',  'Location', 'location name',\
          'Station ID', 'Longitude', 'Latitude', 'Site Type', 'Data Source', "Station Info",\
          "Datum Info", "Extra Metadata", 'Node', 'Correction',\
@@ -170,8 +173,7 @@ reindex_metadata = ["NWSLI", 'WFO', 'RFC', 'NWS REGION', 'COUNTYNAME', 'STATE', 
 
 all_metadata = all_metadata.reindex(columns=reindex_metadata)
 
-all_metadata = all_metadata.rename(columns={'TIMEZONE':'TIME ZONE',\
-                        'river/water-body name':"River Waterbody Name",\
+all_metadata = all_metadata.rename(columns={'river/water-body name':"River Waterbody Name",\
                          "wrr":"HUC2", "Location":"Location Name", "location name":"AHPS Name",\
                              "hydrograph page":"Hydrograph"})
 
@@ -225,7 +227,7 @@ for index2,row2 in all_converted_data_final.iterrows():
 all_converted_data_final.to_excel("Converted_Datums_for_NWM_Experiment-All.xlsx", index=False)
 
 
-#%% CREATE FORMATTED EXCEL FILE
+#%% CREATE FORMATTED EXCEL FILE -- MASTER LIST
 all_converted_data_final2 = all_converted_data_final
 
 all_converted_data_final2["VDATUM Latitude"] = ''
@@ -269,7 +271,7 @@ all_converted_data_final2 = all_converted_data_final2.sort_values(['NWS REGION',
 
 ########################################
 # create a Pandas Excel writer using XlsxWriter engine
-writer = pd.ExcelWriter('output1.xlsx', engine='xlsxwriter')
+writer = pd.ExcelWriter('NWM_TWL_Forecast_Locations_SciEval.xlsx', engine='xlsxwriter')
 
 # write the DataFrame to the Excel file
 all_converted_data_final2.to_excel(writer, index=False, sheet_name='Master Sheet')
@@ -281,9 +283,6 @@ worksheet = writer.sheets['Master Sheet']
 # Define the blue hyperlink format
 blue_hyperlink_format = workbook.add_format({'color':'blue', 'underline':1,\
                                 'text_wrap':False, 'align':'left', 'valign':'vcenter'})
-
-# Set the format for excluded columns
-excluded_col_format = workbook.add_format({'text_wrap':False, 'align':'left', 'valign':'vcenter'})
 
 # Set the format for other columns
 default_col_format = workbook.add_format({'text_wrap':False, 'align':'left', 'valign':'vcenter'})
@@ -316,7 +315,7 @@ for col_num, col_name in enumerate(all_converted_data_final2.columns):
         worksheet.set_column(col_num, col_num, max_len, cell_format=default_col_format)
     else:
         max_len = 15
-        worksheet.set_column(col_num, col_num, max_len, cell_format=excluded_col_format)
+        worksheet.set_column(col_num, col_num, max_len, cell_format=default_col_format)
 
 
 # Wrap the headers

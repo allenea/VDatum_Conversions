@@ -14,12 +14,29 @@ from src.isrelation import is_west_of#, is_north_of
 
 
 # Lookup table to get region code from region name
-region_dict = {"Alaska": "ak", "South East Alaska Tidal":"seak", "American Samoa":"as",\
-        "Contiguous United States":"contiguous", "Chesapeake/Delaware Bay":"chesapeak_delaware",\
-         "West Coast":"westcoast", "Guam and Commonwealth of Northern Mariana Islands":"gcnmi",\
-         "Hawaii":"hi", "Puerto Rico and US Virgin Islands":"prvi",\
-         "Saint George Island":"sgi","Saint Paul Island":"spi",\
-             "Saint Lawrence Island":"sli"}
+REGION_DICT = {
+    "Alaska": "ak",
+    "South East Alaska Tidal": "seak",
+    "American Samoa": "as",
+    "Contiguous United States": "contiguous",
+    "Chesapeake/Delaware Bay": "chesapeak_delaware",
+    "West Coast": "westcoast",
+    "Guam and Commonwealth of Northern Mariana Islands": "gcnmi",
+    "Hawaii": "hi",
+    "Puerto Rico and US Virgin Islands": "prvi",
+    "Saint George Island": "sgi",
+    "Saint Paul Island": "spi",
+    "Saint Lawrence Island": "sli"
+}
+
+# Unknown regions
+ALASKA = (-169.5, 51.2, -129.5, 71.5)
+AMERICAN_SAMOA = (-171.8, -14.5, -168.1, -10.8)
+GUAM_CNMNI = (144.5, 13.3, 146.2, 20.8)
+HAWAII = (-161.9, 18.7, -154.8, 22.5)
+ST_GEORGE_ISLAND = (-171.8, 56.5, -169.5, 59.2)
+ST_PAUL_ISLAND = (-173.3, 56.0, -169.5, 58.2)
+ST_LAWRENCE_ISLAND = (-173.5, 63.0, -168.5, 65.5)
 
 
 def assign_regions_vdatum(metadata):
@@ -27,83 +44,72 @@ def assign_regions_vdatum(metadata):
 
     all_kmls = read_vdatum_regions()
 
-# =============================================================================
-#   UNKNOWN REGIONS
-# =============================================================================
-#   West Longitude, South Latitude, East Longitude, North Latitude
-    alaska = (-169.5, 51.2, -129.5, 71.5)
-    american_samoa = (-171.8, -14.5, -168.1, -10.8)
-    guam_cnmni = (144.5, 13.3, 146.2, 20.8)
-    hawaii = (-161.9, 18.7, -154.8, 22.5)
-    st_george_island = (-171.8, 56.5, -169.5, 59.2)
-    st_paul_island = (-173.3, 56.0, -169.5, 58.2)
-    st_lawrence_island = (-173.5, 63.0, -168.5, 65.5)
-# =============================================================================
-
     region_assign = []
     for index, row in metadata.iterrows():
 
         point = Point((row["Longitude"], row["Latitude"]))
 
-        if all_kmls["New Jersey - coastal embayment - South"].geometry.iloc[0].contains(point) or\
-            all_kmls["Virginia/Maryland/Delaware/New Jersey - Mid-Atlantic Bight shelf"].geometry.iloc[0].contains(point) or\
-            all_kmls["Delaware - Delaware Bay"].geometry.iloc[0].contains(point) or\
-            all_kmls["Virginia/Maryland - East Chesapeake Bay"].geometry.iloc[0].contains(point) or\
-            all_kmls["Maryland - Northwest Chesapeake Bay"].geometry.iloc[0].contains(point) or\
-            all_kmls["Virginia - Southwest Chesapeake Bay"].geometry.iloc[0].contains(point):
+        if any(kml.geometry.iloc[0].contains(point) for kml in (
+                all_kmls["New Jersey - coastal embayment - South"],
+                all_kmls["Virginia/Maryland/Delaware/New Jersey - Mid-Atlantic Bight shelf"],
+                all_kmls["Delaware - Delaware Bay"],
+                all_kmls["Virginia/Maryland - East Chesapeake Bay"],
+                all_kmls["Maryland - Northwest Chesapeake Bay"],
+                all_kmls["Virginia - Southwest Chesapeake Bay"])):
 
-            region = region_dict["Chesapeake/Delaware Bay"]
+            region = REGION_DICT["Chesapeake/Delaware Bay"]
 
         elif all_kmls["Puerto Rico and U.S. Virgin Islands"].geometry.iloc[0].contains(point):
 
-            region = region_dict["Puerto Rico and US Virgin Islands"]
+            region = REGION_DICT["Puerto Rico and US Virgin Islands"]
 
-        elif all_kmls["Alaska - Southeast, Yakutat to Glacier Bay"].geometry.iloc[0].contains(point) or\
-            all_kmls["Alaska - Southeast, Glacier Bay to Whale Bay"].geometry.iloc[0].contains(point) or\
-            all_kmls["Alaska - Southeast, Whale Bay to US/Canada Border"].geometry.iloc[0].contains(point):
+        elif any(kml.geometry.iloc[0].contains(point) for kml in (
+                all_kmls["Alaska - Southeast, Yakutat to Glacier Bay"],
+                all_kmls["Alaska - Southeast, Glacier Bay to Whale Bay"],
+                all_kmls["Alaska - Southeast, Whale Bay to US/Canada Border"])):
 
-            region = region_dict["South East Alaska Tidal"]
+            region = REGION_DICT["South East Alaska Tidal"]
 
 
-        elif all_kmls["Washington - Coastal"].geometry.iloc[0].contains(point) or\
-            all_kmls["Washington - Strait of Juan de Fuca Inland"].geometry.iloc[0].contains(point) or\
-            all_kmls["Washington - Strait of Juan de Fuca"].geometry.iloc[0].contains(point) or\
-            all_kmls["Washington - Puget Sound"].geometry.iloc[0].contains(point) or\
-            all_kmls["Washington/Oregon/California - Offshore"].geometry.iloc[0].contains(point) or\
-            all_kmls["Oregon - Coastal Inland"].geometry.iloc[0].contains(point) or\
-            all_kmls["Oregon - Coastal"].geometry.iloc[0].contains(point) or\
-            all_kmls["California -Monterey Bay to Morro Bay"].geometry.iloc[0].contains(point) or\
-            all_kmls["California/Oregon - Coastal"].geometry.iloc[0].contains(point) or\
-            all_kmls["California - San Francisco Bay Vicinity"].geometry.iloc[0].contains(point) or\
-            all_kmls["California - San Francisco Bay Inland"].geometry.iloc[0].contains(point) or\
-            all_kmls["California - Southern California Inland"].geometry.iloc[0].contains(point) or\
-            all_kmls["California - Southern California"].geometry.iloc[0].contains(point) or\
-            all_kmls["Columbia River"].geometry.iloc[0].contains(point):
+        elif any(kml.geometry.iloc[0].contains(point) for kml in (all_kmls["Washington - Coastal"],
+                all_kmls["Washington - Strait of Juan de Fuca Inland"],
+                all_kmls["Washington - Strait of Juan de Fuca"],
+                all_kmls["Washington - Puget Sound"],
+                all_kmls["Washington/Oregon/California - Offshore"],
+                all_kmls["Oregon - Coastal Inland"],
+                all_kmls["Oregon - Coastal"],
+                all_kmls["California -Monterey Bay to Morro Bay"],
+                all_kmls["California/Oregon - Coastal"],
+                all_kmls["California - San Francisco Bay Vicinity"],
+                all_kmls["California - San Francisco Bay Inland"],
+                all_kmls["California - Southern California Inland"],
+                all_kmls["California - Southern California"],
+                all_kmls["Columbia River"])):
 
-            region = region_dict["West Coast"]
+            region = REGION_DICT["West Coast"]
 
-        elif is_west_of(point, alaska[0]) and point.y >= alaska[1] and point.y <= alaska[3]:
-            region = region_dict["Alaska"]
-        elif is_west_of(point, american_samoa[0]) and\
-                point.y >= american_samoa[1] and point.y <= american_samoa[3]:
-            region = region_dict["American Samoa"]
-        elif is_west_of(point, guam_cnmni[0]) and\
-                point.y >= guam_cnmni[1] and point.y <= guam_cnmni[3]:
-            region = region_dict["Guam and Commonwealth of Northern Mariana Islands"]
-        elif not is_west_of(point, hawaii[0]) and\
-                point.y >= hawaii[1] and point.y <= hawaii[3]:
-            region = region_dict["Hawaii"]
-        elif is_west_of(point, st_george_island[0]) and\
-                point.y >= st_george_island[1] and point.y <= st_george_island[3]:
-            region = region_dict["Saint George Island"]
-        elif is_west_of(point, st_paul_island[0]) and\
-                point.y >= st_paul_island[1] and point.y <= st_paul_island[3]:
-            region = region_dict["Saint Paul Island"]
-        elif is_west_of(point, st_lawrence_island[0]) and\
-                point.y >= st_lawrence_island[1] and point.y <= st_lawrence_island[3]:
-            region = region_dict["Saint Lawrence Island"]
+        elif is_west_of(point, ALASKA[0]) and point.y >= ALASKA[1] and point.y <= ALASKA[3]:
+            region = REGION_DICT["Alaska"]
+        elif is_west_of(point, AMERICAN_SAMOA[0]) and\
+                point.y >= AMERICAN_SAMOA[1] and point.y <= AMERICAN_SAMOA[3]:
+            region = REGION_DICT["American Samoa"]
+        elif is_west_of(point, GUAM_CNMNI[0]) and\
+                point.y >= GUAM_CNMNI[1] and point.y <= GUAM_CNMNI[3]:
+            region = REGION_DICT["Guam and Commonwealth of Northern Mariana Islands"]
+        elif not is_west_of(point, HAWAII[0]) and\
+                point.y >= HAWAII[1] and point.y <= HAWAII[3]:
+            region = REGION_DICT["Hawaii"]
+        elif is_west_of(point, ST_GEORGE_ISLAND[0]) and\
+                point.y >= ST_GEORGE_ISLAND[1] and point.y <= ST_GEORGE_ISLAND[3]:
+            region = REGION_DICT["Saint George Island"]
+        elif is_west_of(point, ST_PAUL_ISLAND[0]) and\
+                point.y >= ST_PAUL_ISLAND[1] and point.y <= ST_PAUL_ISLAND[3]:
+            region = REGION_DICT["Saint Paul Island"]
+        elif is_west_of(point, ST_LAWRENCE_ISLAND[0]) and\
+                point.y >= ST_LAWRENCE_ISLAND[1] and point.y <= ST_LAWRENCE_ISLAND[3]:
+            region = REGION_DICT["Saint Lawrence Island"]
         else:
-            region = region_dict["Contiguous United States"]
+            region = REGION_DICT["Contiguous United States"]
 
         region_assign.append(region)
 

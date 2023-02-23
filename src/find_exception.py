@@ -11,8 +11,27 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 from src.check_url import check_url
 
 def find_h_ref_exception(api_url_text):
-    """THIS IS A REALLY BAD WAY TO DO THIS....
-    Some weird things are happening with expected inputs"""
+    """
+    The function creates a list of horizontal reference frames and loops through the list
+    twice to create a temporary API url with each possible combination of input and target
+    reference frames. The function then checks if each temporary API url is valid using the
+    check_url() function from a module called src.check_url. If a valid API url is found,
+    the input and target reference frames are printed and returned. If no valid API url is
+    found, None is returned.
+
+    Parameters
+    ----------
+    api_url_text : str
+        DESCRIPTION.
+
+    Returns
+    -------
+    input_h_ref: str, None
+        DESCRIPTION. horizontal reference frames for input
+    target_h_ref : str, None
+        DESCRIPTION. horizontal reference frames for output
+
+    """
 
     horizontal_reference_frame_list = ["NAD83_2011", "NAD27", "IGS14", "NAD83_1986",\
                             "NAD83_NSRS2007", "NAD83_MARP00", "NAD83_PACP00",\
@@ -26,9 +45,7 @@ def find_h_ref_exception(api_url_text):
     for input_h_ref in horizontal_reference_frame_list:
         for target_h_ref in horizontal_reference_frame_list:
             tmp_api = api_url_text.format(input_h_ref, target_h_ref)
-            url_check = check_url(tmp_api)
-            if url_check:
-                print(input_h_ref, target_h_ref)
+            if check_url(tmp_api):
                 return input_h_ref, target_h_ref
 
     print("ERROR: COULD NOT ACCESS API")

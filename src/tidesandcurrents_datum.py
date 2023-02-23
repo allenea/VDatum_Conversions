@@ -24,12 +24,12 @@ FILTER_LIST = [None, 'GT', 'MN', 'DHQ', 'DLQ', 'HWI', 'LWI', 'Max Tide',\
 
 def grab_nos_data(stid, ref_datum="MLLW", source="web", first=True):
     """
-    This is a Python script that scrapes tide data from the National Oceanic and
-    Atmospheric Administration (NOAA) website. The script uses the BeautifulSoup
-    library to parse the HTML content of the website and extract the data from
-    the table. The extracted data is then stored in a pandas DataFrame, which is
-    a two-dimensional size-mutable, heterogeneous tabular data structure with
-    labeled axes (rows and columns).
+    This is a Python script that scrapes tide data from the NOAA website.
+    
+    The script uses the BeautifulSoup library to parse the HTML content of the
+    website and extract the data from the table. The extracted data is then
+    stored in a pandas DataFrame, which is a two-dimensional size-mutable,
+    heterogeneous tabular data structure with labeled axes (rows and columns).
 
     The script can also make a request to the API provided by the NOAA to obtain
     the same data. The data obtained from the API is in JSON format, and the script

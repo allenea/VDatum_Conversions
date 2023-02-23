@@ -19,34 +19,41 @@ def read_vdatum_regions():
     # =============================================================================
     # READ IN VDATUM REGIONS AND ASSIGN REGIONS TO EACH STATION
     # =============================================================================
-    #chesapeak_delaware
-    DEdelbay33_file = os.path.join(path,"vdatum", "DEdelbay33_8301", "DEdelbay33_8301.kml")
-    MDnwchb11_8301_file = os.path.join(path,"vdatum", "MDnwchb11_8301", "MDnwchb11_8301.kml")
-    MDVAechb1_file = os.path.join(path,"vdatum", "MDVAechb11_8301", "MDVAechb11_8301.kml")
-    VAswchb11_8301_file = os.path.join(path,"vdatum", "VAswchb11_8301", "VAswchb11_8301.kml")
-    NJVAmab33_file = os.path.join(path,"vdatum", "NJVAmab33_8301", "NJVAmab33_8301.kml")
-    NJscstemb32_file = os.path.join(path,"vdatum", "NJscstemb32_8301", "NJscstemb32_8301.kml")
-    #prvi
-    PRVI_file = os.path.join(path,"vdatum", "PRVI01_8301", "PRVI01_8301.kml")
-    #seak
-    AKyakutat00_file = os.path.join(path,"vdatum","AKyakutat00_8301", "AKyakutat00_8301.kml")
-    AKglacier00_file = os.path.join(path,"vdatum","AKglacier00_8301", "AKglacier00_8301.kml")
-    AKwhale00_file = os.path.join(path,"vdatum", "AKwhale00_8301", "AKwhale00_8301.kml")
-    #westcoast
-    CAsouthn00_file = os.path.join(path,"vdatum", "CAsouthn00_8301", "CAsouthn00_8301.kml")
-    CAsouin00_file = os.path.join(path,"vdatum", "CAsouin00_8301", "CAsouin00_8301.kml")
-    CAsfdel00_file = os.path.join(path,"vdatum", "CAsfdel00_8301", "CAsfdel00_8301.kml")
-    CAsfbay13_file = os.path.join(path,"vdatum", "CAsfbay13_8301", "CAsfbay13_8301.kml")
-    CAoregon00_file = os.path.join(path,"vdatum", "CAoregon00_8301", "CAoregon00_8301.kml")
-    CAmontby13_file = os.path.join(path,"vdatum", "CAmontby13_8301", "CAmontby13_8301.kml")
-    ORcoast00_file = os.path.join(path,"vdatum", "ORcoast00_8301", "ORcoast00_8301.kml")
-    ORcoain00_file = os.path.join(path,"vdatum", "ORcoain00_8301", "ORcoain00_8301.kml")
-    WCoffsh00_file = os.path.join(path,"vdatum", "WCoffsh00_8301", "WCoffsh00_8301.kml")
-    WApuget13_file = os.path.join(path,"vdatum", "WApugets13_8301", "WApugets13_8301.kml")
-    WAjdfuca14_file = os.path.join(path,"vdatum", "WAjdfuca14_8301", "WAjdfuca14_8301.kml")
-    WAjdfin00_file = os.path.join(path,"vdatum", "WAjdfin00_8301", "WAjdfin00_8301.kml")
-    WAcoast00_file = os.path.join(path,"vdatum","WAcoast00_8301" , "WAcoast00_8301.kml")
-    CRD_file = os.path.join(path,"vdatum","CRD" , "CRD.kml")
+    if os.path.exists(os.path.join(path, "vdatum")):
+        #chesapeak_delaware
+        DEdelbay33_file = os.path.join(path,"vdatum", "DEdelbay33_8301", "DEdelbay33_8301.kml")
+        MDnwchb11_8301_file = os.path.join(path,"vdatum", "MDnwchb11_8301", "MDnwchb11_8301.kml")
+        MDVAechb1_file = os.path.join(path,"vdatum", "MDVAechb11_8301", "MDVAechb11_8301.kml")
+        VAswchb11_8301_file = os.path.join(path,"vdatum", "VAswchb11_8301", "VAswchb11_8301.kml")
+        NJVAmab33_file = os.path.join(path,"vdatum", "NJVAmab33_8301", "NJVAmab33_8301.kml")
+        NJscstemb32_file = os.path.join(path,"vdatum", "NJscstemb32_8301", "NJscstemb32_8301.kml")
+
+        #prvi
+        PRVI_file = os.path.join(path,"vdatum", "PRVI01_8301", "PRVI01_8301.kml")
+
+        #seak
+        AKyakutat00_file = os.path.join(path,"vdatum","AKyakutat00_8301", "AKyakutat00_8301.kml")
+        AKglacier00_file = os.path.join(path,"vdatum","AKglacier00_8301", "AKglacier00_8301.kml")
+        AKwhale00_file = os.path.join(path,"vdatum", "AKwhale00_8301", "AKwhale00_8301.kml")
+
+        #westcoast
+        CAsouthn00_file = os.path.join(path,"vdatum", "CAsouthn00_8301", "CAsouthn00_8301.kml")
+        CAsouin00_file = os.path.join(path,"vdatum", "CAsouin00_8301", "CAsouin00_8301.kml")
+        CAsfdel00_file = os.path.join(path,"vdatum", "CAsfdel00_8301", "CAsfdel00_8301.kml")
+        CAsfbay13_file = os.path.join(path,"vdatum", "CAsfbay13_8301", "CAsfbay13_8301.kml")
+        CAoregon00_file = os.path.join(path,"vdatum", "CAoregon00_8301", "CAoregon00_8301.kml")
+        CAmontby13_file = os.path.join(path,"vdatum", "CAmontby13_8301", "CAmontby13_8301.kml")
+        ORcoast00_file = os.path.join(path,"vdatum", "ORcoast00_8301", "ORcoast00_8301.kml")
+        ORcoain00_file = os.path.join(path,"vdatum", "ORcoain00_8301", "ORcoain00_8301.kml")
+        WCoffsh00_file = os.path.join(path,"vdatum", "WCoffsh00_8301", "WCoffsh00_8301.kml")
+        WApuget13_file = os.path.join(path,"vdatum", "WApugets13_8301", "WApugets13_8301.kml")
+        WAjdfuca14_file = os.path.join(path,"vdatum", "WAjdfuca14_8301", "WAjdfuca14_8301.kml")
+        WAjdfin00_file = os.path.join(path,"vdatum", "WAjdfin00_8301", "WAjdfin00_8301.kml")
+        WAcoast00_file = os.path.join(path,"vdatum","WAcoast00_8301" , "WAcoast00_8301.kml")
+        CRD_file = os.path.join(path,"vdatum","CRD" , "CRD.kml")
+    else:
+        err_str = "The directory containing the vdatum regions and kml files could not be found"
+        raise FileNotFoundError(err_str)
 
     ############################
     #chesapeak_delaware
@@ -56,12 +63,15 @@ def read_vdatum_regions():
     VAswchb11_8301 = read_kml_file(VAswchb11_8301_file)
     NJVAmab33 = read_kml_file(NJVAmab33_file)
     NJscstemb32 = read_kml_file(NJscstemb32_file)
+
     #prvi
     PRVI = read_kml_file(PRVI_file)
+
     #seak
     AKyakutat00 = read_kml_file(AKyakutat00_file)
     AKglacier00 = read_kml_file(AKglacier00_file)
     AKwhale00 = read_kml_file(AKwhale00_file)
+
     #westcoast
     CAsouthn00 = read_kml_file(CAsouthn00_file)
     CAsouin00 = read_kml_file(CAsouin00_file)
@@ -79,7 +89,8 @@ def read_vdatum_regions():
     CRD = read_kml_file(CRD_file)
     ############################
 
-    all_kmls = {"New Jersey - coastal embayment - South":NJscstemb32,\
+    #return all_kmls
+    return {"New Jersey - coastal embayment - South":NJscstemb32,\
             "Virginia/Maryland/Delaware/New Jersey - Mid-Atlantic Bight shelf":NJVAmab33,\
             "Delaware - Delaware Bay":DEdelbay33,\
             "Virginia/Maryland - East Chesapeake Bay":MDVAechb1,\
@@ -103,5 +114,3 @@ def read_vdatum_regions():
             "California - Southern California Inland":CAsouin00,\
             "California - Southern California":CAsouthn00,\
             "Columbia River":CRD}
-
-    return all_kmls

@@ -10,6 +10,7 @@ import geopandas as gpd
 try:
     gpd.io.file.fiona.drvsupport.supported_drivers['KML'] = 'rw'
 except:
+    raise ImportError("Check to make sure geopandas and fiona are installed")
     from fiona.drvsupport import supported_drivers
     supported_drivers['KML'] = 'rw'
 
