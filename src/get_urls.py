@@ -45,7 +45,8 @@ def get_station_info_urls(station_id, source="NOS"):
     """
     if source.casefold() == "nos":
         #This returns f"https://tidesandcurrents.noaa.gov/stationhome.html?id={station_id}"
-        return extra_link(station_id, api=False)
+        #return extra_link(station_id, api=False)
+        return f"https://tidesandcurrents.noaa.gov/stationhome.html?id={station_id}"
 
     if source.casefold() == "usgs":
         return f"https://waterdata.usgs.gov/nwis/nwismap/?site_no={station_id}&agency_cd=USGS"
@@ -121,7 +122,7 @@ def get_station_datum_urls(station_id, source="NOS", ref_datum=None, fmt="rdb"):
 
         if fmt.casefold() not in acceptable_fmts:
             raise ValueError((f"For USGS source, fmt parameter is required and {fmt}"
-                             "should be one of {acceptable_fmts}."))
+                             f"should be one of {acceptable_fmts}."))
 
         url = f"https://waterservices.usgs.gov/nwis/site/?site={station_id}&format={fmt}"
 

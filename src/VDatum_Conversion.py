@@ -164,7 +164,8 @@ def convert_datums(metadata, input_v="NAVD88", output_v="MLLW", input_height=Non
             result = requests.get(url).json()
         else:
             #print("PROBLEM WITH: ", url)
-            metadata.loc[index, output_column_header] = np.nan
+            metadata.loc[index, output_column_header] = -999999
+            #metadata.loc[index, output_column_header] = np.nan
             url_list.append(create_hyperlink(url, "Error"))
             continue
 
