@@ -30,69 +30,175 @@ from src.tidesandcurrents_datum import grab_nos_data
 from src.VDatum_Region_Selection import assign_regions_vdatum
 from src.VDatum_Conversion import convert_datums, convert_from_ref_datum
 from src.read_join_nws_data import get_nws_attributes
+from src.get_urls import get_station_info_urls, get_station_datum_urls, extra_link, create_hyperlink
+from src.excel_formatting import init_styles, format_excel
 
-try:
-    gpd.io.file.fiona.drvsupport.supported_drivers['KML'] = 'rw'
-except:
-    from fiona.drvsupport import supported_drivers
-    supported_drivers['KML'] = 'rw'
+# =============================================================================
+# SETUP Excel Spreadsheet and Workbook Objects
+# =============================================================================
+writer = pd.ExcelWriter('NWM_TWL_Forecast_Locations_SciEval.xlsx', engine='xlsxwriter')
+workbook, styles  = init_styles(writer.book)
+# =============================================================================
+# Establish the path
+# =============================================================================
+path = os.getcwd()
+#path = os.path.abspath("./..")
+# =============================================================================
+#Datums that we are looking for....
+req_data = {key: np.nan for key in ["Ref_Datum", "MHHW", "MHW", "MTL", "MSL",\
+                                    "DTL", "MLW", "MLLW", "NAVD88", "STND", "NGVD29"]}
+# =============================================================================
+# READ IN NWC/NWM's TWL OUTPUT LOCATION MASTER LIST
+# =============================================================================
+master_list_start = pd.read_excel(os.path.join(path, "Obs_Location_Requests_Science_Eval.xlsx"),\
+                                                                                  header=0)
+master_list_start = master_list_start.drop(["Region", "RFC"], axis=1)
+# =============================================================================
+# =============================================================================
+# READ IN NWS GIS (SHAPEFILE) DATA -- Add to the original list
+# =============================================================================
+all_shp = {}
+shp_files = {"CWA":"w_08mr23.shp", "RFC":"rf12ja05.shp", "MARINE_ZONES":"mz08mr23.shp",\
+             "COUNTIES":"c_08mr23.shp"}
+for key, value in shp_files.items():
+    all_shp[key] = gpd.read_file(os.path.join(path, "NWS_GIS_Data", value.split(".shp",\
+                                                                maxsplit=1)[0], value))
 
-def read_kml_file(kml_file):
-    """simple read in kml file function with geopandas"""
-    return gpd.read_file(kml_file, driver='KML')
+nws_data = get_nws_attributes(all_shp, master_list_start)
+# =============================================================================
+#JOIN THE DATA TO STATION DATA
+#nws_data has nwsli in the first position
+location_metadata = pd.merge(nws_data, master_list_start, on="NWSLI", how="inner")
 
-req_data = {"Ref_Datum":np.nan, 'MHHW':np.nan, 'MHW':np.nan, 'MTL':np.nan,\
-             'MSL':np.nan, 'DTL':np.nan, 'MLW':np.nan, 'MLLW':np.nan,\
-             'NAVD88':np.nan, 'STND':np.nan, "NGVD29":np.nan}
+vdatum_regions = assign_regions_vdatum(location_metadata)
+location_metadata["VDatum Regions"] = vdatum_regions
 
-df = pd.read_excel(os.path.join(os.getcwd(), "Obs_Locations_Request.xlsx"), header=0)
+#Sort then reser the index so that it is like 0,1,2,3, etc.
+location_metadata = location_metadata.sort_values(['NWS REGION', 'WFO', 'Station ID'])
+location_metadata = location_metadata.reset_index(drop=True)
 
-for index, row in df.iterrows():
+#Do the datum conversion for the model, NAVD88 to MLLW assuming water level/station = 0
+df_converted, url_list_mllw = convert_datums(location_metadata, input_v="NAVD88",\
+                                        output_v="MLLW", input_height=0.0)
+
+df_converted, url_list_mhhw = convert_datums(df_converted, input_v="NAVD88",\
+                                         output_v="MHHW", input_height=0.0)
+
+df_converted["VDatum - MLLW"] = url_list_mllw
+df_converted["VDatum - MHHW"] = url_list_mhhw
+
+df_converted["VDATUM Latitude"] = ''
+df_converted["VDATUM Longitude"] = ''
+df_converted["VDATUM Height"] = ''
+df_converted["VDATUM to MLLW"] = ''
+df_converted["VDATUM to MHHW"] = ''
+df_converted["Comments"] = ''
+
+df_col_order = ['NWSLI', 'WFO', 'RFC', 'NWS REGION', 'COUNTYNAME', 'STATE', 'TIME ZONE',\
+                'Longitude', 'Latitude', 'Station ID', 'Site Type', 'Data Source','Node',\
+                'Correction', 'Domain', 'VDatum Regions','NAVD88 to MLLW', 'NAVD88 to MHHW',\
+                'VDatum - MLLW', 'VDatum - MHHW', 'VDATUM Latitude',\
+                'VDATUM Longitude', 'VDATUM Height', 'VDATUM to MLLW', 'VDATUM to MHHW',\
+                'Comments']
+
+df_converted = df_converted.reindex(columns=df_col_order)
+
+## Create the hyperlinks for station information -- will link with Station ID for now
+station_info_urls_with_ids = []
+station_info_urls = []
+for index, row in df_converted.iterrows():
+    station_id = row["Station ID"]
+    if row["Data Source"] == "USGS":
+        stid_short = station_id[2:]
+        station_info_urls_with_ids.append(create_hyperlink(get_station_info_urls(stid_short,\
+                                                        source="USGS"), station_id))
+
+        station_info_urls.append(create_hyperlink(get_station_info_urls(stid_short,\
+                                                        source="USGS"), "Station Info"))
+    elif row["Data Source"] == "Tide":
+        station_info_urls_with_ids.append(create_hyperlink(get_station_info_urls(station_id,\
+                                                    source="NOS"), station_id))
+
+        station_info_urls.append(create_hyperlink(get_station_info_urls(station_id,\
+                                                    source="NOS"), "Station Info"))
+    elif station_id is None:
+        station_info_urls_with_ids.append(str("None"))
+        station_info_urls.append(np.nan)
+
+    else:
+        station_info_urls_with_ids.append(station_id)
+        station_info_urls.append(np.nan)
+
+
+#Save a copy before making all the Station ID's hyperlinks, required for later steps
+save_df = df_converted.copy()
+
+#Now replace the Station ID column with the hyperlinks
+df_converted["Station ID"] = station_info_urls_with_ids
+# =============================================================================
+#SAVE DATA -- NWM List of Stations
+df_converted.to_excel(writer, index=False, sheet_name='NWM List with Conversions')
+NWC_List_Excel = writer.sheets['NWM List with Conversions']
+NWC_List_Excel = format_excel(df_converted, NWC_List_Excel, styles)
+# =============================================================================
+#%% Now we are going to get the datum information for each gage location
+#We only want to use a copy of save_df
+datum_metadata = save_df.copy()
+#And drop things we don't need for this sheet
+datum_metadata = datum_metadata.drop(['Node', 'Correction', 'Domain', 'NAVD88 to MLLW',
+                'NAVD88 to MHHW', 'VDatum - MLLW', 'VDatum - MHHW', 'VDATUM Latitude',
+                'VDATUM Longitude', 'VDATUM Height', 'VDATUM to MLLW', 'VDATUM to MHHW',
+                'Comments'], axis=1)
+
+#Now we are going to collect the station datum data and the urls and extra urls that tell
+# us more information about the data
+station_datum_urls = []
+extra_urls = []
+for index, row in datum_metadata.iterrows():
 
     station_id = row["Station ID"]
 
     if row["Data Source"] == "USGS":
-        tmp_df = grab_usgs_data(station_id)
+        stid_short = station_id[2:]
+        tmp_df, api_url = grab_usgs_data(stid_short)
+
+        station_datum_urls.append(create_hyperlink(api_url, "Datum Info"))
+
+        extra_urls.append(np.nan)
 
     elif row["Data Source"] == "Tide":
-        tmp_df = grab_nos_data(station_id, ref_datum="MLLW", source="web")
+        tmp_df, ref_datum_nos = grab_nos_data(station_id, ref_datum="MLLW", source="web")
 
-        #Since we only want NAVD88 to MLLW, leave this out for now to avoid confusion
-        #But corrcting Reference datum to be STND -- which VDATUM won't know...
-        if pd.isna(tmp_df["MLLW"]).values[0] and tmp_df["STND"].values == 0:
-            tmp_df = grab_nos_data(station_id, ref_datum="STND", source="web")
+        station_datum_urls.append(create_hyperlink(get_station_datum_urls(station_id,\
+                        source="NOS", ref_datum=ref_datum_nos, fmt="web"), "Datum Info"))
+
+        extra_urls.append(create_hyperlink(extra_link(station_id), "More Info"))
 
     else:
         tmp_df = pd.DataFrame(req_data, index=["name"])
+
+        station_datum_urls.append(np.nan)
+
+        extra_urls.append(np.nan)
 
     if index == 0:
         combine_df = tmp_df
     else:
         combine_df = pd.concat([combine_df, tmp_df], ignore_index=True)
 
-
-
-station_metadata = df.join(combine_df, how="outer")
-
+#We are going to combine this with the datum_metadata we cleaned up above.
+datum_metadata = datum_metadata.join(combine_df, how="outer")
+#And add Datum Info... We are going to save extra_urls for the Master List
+datum_metadata["Datum Info"] = station_datum_urls
 # =============================================================================
-# READ IN NWS GIS (SHAPEFILE) DATA
+#Now we are going to try to fill and datum conversions which are blank, using vdatum
+#  if possible
+datum_metadata = convert_from_ref_datum(datum_metadata)
+save_df3 = datum_metadata.copy()
 # =============================================================================
-#READ IN NWS GIS DATA - WHO IS RESPONSIBLE FOR FORECASTING THESE LOCATIONS
-marine_zones = gpd.read_file(os.path.join(os.getcwd(), "NWS_GIS_Data", "mz08mr23", "mz08mr23.shp"))
-rfc = gpd.read_file(os.path.join(os.getcwd(), "NWS_GIS_Data", "rf12ja05", "rf12ja05.shp"))
-cwa = gpd.read_file(os.path.join(os.getcwd(), "NWS_GIS_Data", "w_08mr23", "w_08mr23.shp"))
-counties = gpd.read_file(os.path.join(os.getcwd(), "NWS_GIS_Data", "c_08mr23", "c_08mr23.shp"))
-all_shp = {"CWA": cwa, "RFC": rfc, "MARINE_ZONES": marine_zones, "COUNTIES":counties}
-
-nws_data = get_nws_attributes(all_shp, df)
-
-
-#JOIN THE DATA TO STATION DATA
-station_metadata = pd.merge(nws_data, station_metadata, on="NWSLI", how="left")
-
-#SAVE DATA
-station_metadata.to_excel("Raw_Data.xlsx", index=False)
-
+### NEXT STEP.... we want to get the AHPS datum information and add that to the end
+# both of the ahps_cms and usgs_hads information will go into the master list...
+# however, as stated we will include the AHPS_CMS datum information for the datum sheet.
 # =============================================================================
 # READ IN AHPS CMS METADATA
 # =============================================================================
@@ -101,7 +207,6 @@ df_cms = pd.read_csv(url_ahps_cms)
 df_cms = df_cms.rename(columns={"nws shef id": "NWSLI"})
 df_cms["NWSLI"] = df_cms["NWSLI"].str.upper()
 df_cms = df_cms.drop(["wfo", "rfc", 'state', 'county', "timezone"], axis=1)
-
 
 # =============================================================================
 # READ IN USGS HADS METADATA
@@ -112,16 +217,11 @@ df_hads = pd.read_csv(url_usgs_hads, skiprows=4, sep="|", header=None,
                          "latitude", "longitude", "Location"])
 df_hads["NWSLI"] = df_hads["NWSLI"].str.upper()
 df_hads = df_hads.drop(["NWS HAS"], axis=1)
-
+# =============================================================================
 #JOIN THESE 2 SETS OF DATA
 new_df = pd.merge(df_hads, df_cms, on="NWSLI", how="left")
 
-
-# =============================================================================
-# JOIN HADS+AHPS METADATA TO STATION_METADATA -- CLEAN UP
-# =============================================================================
-all_metadata = pd.merge(station_metadata, new_df, on="NWSLI", how="left")
-
+#Drop columns we don't care about -- these are the columns
 columns_to_drop = ['USGS Station Number', 'GOES Identifer', 'latitude_x',
        'longitude_x', 'proximity', 'location type', 'usgs id', 'latitude_y',
        'longitude_y', 'inundation', 'coeid', 'pedts', 'in service', 'hemisphere',
@@ -132,91 +232,138 @@ columns_to_drop = ['USGS Station Number', 'GOES Identifer', 'latitude_x',
        'short-term probabilistic enabled',
        'chance of exceeding probabilistic enabled']
 
-all_metadata = all_metadata.drop(columns_to_drop, axis=1)
+new_df = new_df.drop(columns_to_drop, axis=1)
+
+#Rename the columns that have bad (non-descriptive) names
+new_df = new_df.rename(columns={'river/water-body name':"River Waterbody Name",\
+                         "wrr":"HUC2", "Location":"Location Name", "location name":"AHPS Name",\
+                             "hydrograph page":"Hydrograph"})
+
 # =============================================================================
-# READ IN VDATUM REGIONS AND ASSIGN REGIONS TO EACH STATION
+#Now that's all done, let's save a copy that will be used by the master list
+save_df2 = new_df.copy()
+
+#We'll use a copy of that for the datum sheet, we will drop the columns we don't want
+ahps_datum = save_df2.copy()
+ahps_datum = ahps_datum.drop(['Location Name', 'AHPS Name', 'River Waterbody Name',\
+                              'HUC2', 'Hydrograph'], axis=1)
+
+#Then join it with the cleaned up datum_metadata dataframe
+all_datums = pd.merge(datum_metadata, ahps_datum, on="NWSLI", how="left")
+
+#and add station urls back to the station ID... at this point we won't want to
+#  reference all_datums again for iteration purposes
+all_datums["Station ID"] = station_info_urls_with_ids
+
+#Then reorder the columns to match what we want...
+df_order2 = ['NWSLI', 'WFO', 'RFC', 'NWS REGION', 'COUNTYNAME', 'STATE', 'TIME ZONE',
+            'Station ID','Longitude', 'Latitude', 'Site Type', 'Data Source',
+            'VDatum Regions', 'Datum Info', 'Ref_Datum', 'MHHW', 'MHW', 'MTL',
+            'MSL', 'DTL', 'MLW', 'MLLW', 'NAVD88', 'STND', 'NGVD29', 'LMSL',
+            'nrldb vertical datum name', 'nrldb vertical datum', 'navd88 vertical datum',
+            'ngvd29 vertical datum', 'msl vertical datum', 'other vertical datum',
+            'elevation', 'action stage', 'flood stage', 'moderate flood stage',
+            'major flood stage', 'flood stage unit']
+
+all_datums = all_datums.reindex(columns=df_order2)
+
 # =============================================================================
-path = os.getcwd()
-#path = os.path.abspath("./..")
+#SAVE DATA
+all_datums.to_excel(writer, index=False, sheet_name='Tidal Datums')
+Datums_Excel = writer.sheets['Tidal Datums']
+Datums_Excel = format_excel(all_datums, Datums_Excel, styles)
 
-DEB_file = os.path.join(path,"VDatum_KML", "DEdelbay33_8301", "DEdelbay33_8301.kml")
-CBN_file = os.path.join(path,"VDatum_KML", "MDnwchb11_8301", "MDnwchb11_8301.kml")
-CBE_file = os.path.join(path,"VDatum_KML", "MDVAechb11_8301", "MDVAechb11_8301.kml")
-CBW_file = os.path.join(path,"VDatum_KML", "VAswchb11_8301", "VAswchb11_8301.kml")
+# =============================================================================
+# JOIN HADS+AHPS METADATA TO STATION_METADATA -- CLEAN UP
+# =============================================================================
+#%%
+# =============================================================================
+# NEXT STEP -- CREATE A MASTER LIST WITH THE 2 SAVED Dataframes
+# =============================================================================
 
-MAB_file = os.path.join(path,"VDatum_KML", "NJscstemb32_8301", "NJscstemb32_8301.kml")
-NJS_file = os.path.join(path,"VDatum_KML", "NJVAmab33_8301", "NJVAmab33_8301.kml")
+all_metadata = pd.merge(save_df, save_df2, on="NWSLI", how="left")
+#Now add in the Extra Metadata links
+all_metadata["Station Info"] = station_info_urls
+all_metadata["Datum Info"] = station_datum_urls
+all_metadata["Extra Metadata"] = extra_urls
 
-PR_file = os.path.join(path,"VDatum_KML", "PRVI01_8301", "PRVI01_8301.kml")
+drop_from_df3 = ['NWSLI', 'WFO', 'RFC', 'NWS REGION', 'COUNTYNAME', 'STATE', 'TIME ZONE',
+       'Longitude', 'Latitude', 'Station ID', 'Site Type', 'Data Source',
+       'VDatum Regions', 'Datum Info']
 
-
-DEB = read_kml_file(DEB_file)
-CBN = read_kml_file(CBN_file)
-CBE = read_kml_file(CBE_file)
-CBW = read_kml_file(CBW_file)
-MAB = read_kml_file(MAB_file)
-NJS = read_kml_file(NJS_file)
-PR = read_kml_file(PR_file)
-
-all_kmls = {"Delaware Bay": DEB, "Chesapeake North": CBN, "Chesapeake East": CBE,\
-            "Chesapeake West":CBW, "Mid-Atlantic Bight":MAB, "New Jersey South":NJS,\
-                "Puerto Rico":PR}
-
-vdatum_regions = assign_regions_vdatum(all_kmls, all_metadata)
-all_metadata["VDatum Regions"] = vdatum_regions
-
+save_df3 = save_df3.drop(columns=drop_from_df3)
+all_metadata = all_metadata.join(save_df3, how="outer")
 
 # =============================================================================
 # CLEAN UP
 # =============================================================================
-reindex_metadata = ["NWSLI", 'WFO', 'RFC', 'NWS_REGION', 'COUNTYNAME', 'STATE', "TIME_ZONE",\
-                    'river/water-body name', 'wrr',  'Location', 'location name',\
-         'Station ID', 'Longitude', 'Latitude', 'Site Type', 'Data Source', 'Node', 'Correction',\
-         'VDatum Regions', 'Ref_Datum', 'MHHW', 'MHW', 'MTL', 'MSL', 'DTL', 'MLW', 'MLLW',\
-             'NAVD88', 'STND', 'NGVD29',\
-         'nrldb vertical datum name', 'nrldb vertical datum', 'navd88 vertical datum',
-         'ngvd29 vertical datum', 'msl vertical datum', 'other vertical datum',
-         'elevation', 'action stage', 'flood stage', 'moderate flood stage',
-         'major flood stage', 'flood stage unit', 'hydrograph page']
-
-all_metadata = all_metadata.reindex(columns=reindex_metadata)
-
-all_metadata = all_metadata.rename(columns={'river/water-body name':"River_Waterbody_Name",\
-                         "wrr":"HUC2", "Location":"Location Name", "location name":"AHPS Name"})
-
-#SAVE FILE
-all_metadata.to_excel("Non_Converted_Datums_for_NWM_Experiment.xlsx", index=False)
-
-#%%
-# =============================================================================
-# BEGIN VDATUM CONVERSIONS
-# =============================================================================
-#Convert to all datums (possible) for the actual stations FROM the reference datum
-all_converted_data = convert_from_ref_datum(all_metadata)
-#%%
-#print("DONE WITH FROM REF DATUM")
-
-#Do the datum conversion for the model, NAVD88 to MLLW assuming water level/station = 0
-all_converted_data_MLLW = convert_datums(all_converted_data, input_v="NAVD88", output_v="MLLW",\
-                                    input_height=0.0)
-
-all_converted_data_MHHW = convert_datums(all_converted_data_MLLW, input_v="NAVD88", \
-                                         output_v="MHHW", input_height=0.0)
-
-reindex_metadata2 = ['WFO', 'RFC', 'NWS_REGION', 'COUNTYNAME', 'STATE', 'TIME_ZONE',
-        'River_Waterbody_Name', 'HUC2', 'Location Name', 'AHPS Name',
-        'NWSLI', 'Station ID', 'Longitude', 'Latitude', 'Site Type', 'Data Source',
-        'Node', 'Correction', 'VDatum Regions', 'Ref_Datum', 'MHHW', 'MHW',
-        'MTL', 'MSL', 'DTL', 'MLW', 'MLLW', 'NAVD88', 'STND', 'NGVD29',\
-        'NAVD88_to_MLLW', 'NAVD88_to_MHHW',
+#Reorder to match how we want the output
+reindex_metadata = ['NWSLI', 'WFO', 'RFC', 'NWS REGION', 'COUNTYNAME', 'STATE', 'TIME ZONE',
+        'River Waterbody Name', 'HUC2', 'Location Name', 'AHPS Name',
+        'Longitude', 'Latitude', 'Station ID', 'Site Type', 'Data Source',
+        "Station Info", "Datum Info", "Extra Metadata",
+        'Node', 'Correction', 'Domain', 'VDatum Regions', 'Ref_Datum', 'MHHW', 'MHW',
+        'MTL', 'MSL', 'DTL', 'MLW', 'MLLW', 'NAVD88', 'STND', 'NGVD29',"LMSL",\
+        'NAVD88 to MLLW', 'NAVD88 to MHHW',
         'nrldb vertical datum name', 'nrldb vertical datum',
         'navd88 vertical datum', 'ngvd29 vertical datum', 'msl vertical datum',
         'other vertical datum', 'elevation', 'action stage', 'flood stage',
         'moderate flood stage', 'major flood stage', 'flood stage unit',
-        'hydrograph page']
+        'Hydrograph']
+
+all_metadata = all_metadata.reindex(columns=reindex_metadata)
+
+#create the hyperlinks for the Hydrograph pages
+for index2,row2 in all_metadata.iterrows():
+    if not pd.isna(row2["Hydrograph"]):
+        all_metadata.at[index2, "Hydrograph"] = create_hyperlink(row2["Hydrograph"], "AHPS Data")
+
+#Add back in the urls for VDatum and the blank cells
+all_metadata["VDatum - MLLW"] = url_list_mllw
+all_metadata["VDatum - MHHW"] = url_list_mhhw
+
+all_metadata["VDATUM Latitude"] = ''
+all_metadata["VDATUM Longitude"] = ''
+all_metadata["VDATUM Height"] = ''
+all_metadata["VDATUM to MLLW"] = ''
+all_metadata["VDATUM to MHHW"] = ''
+all_metadata["Comments"] = ''
+
+#%%
+# create a Pandas Excel writer using XlsxWriter engine
+
+# write the DataFrame to the Excel file
+all_metadata.to_excel(writer, index=False, sheet_name='Master List')
+Master_Sheet = writer.sheets['Master List']
+Master_Sheet = format_excel(all_metadata, Master_Sheet, styles, hyper_id=False)
+#%%
+# =============================================================================
+# ## LAST STEP - CREATE A SHEET WITH ONLY MISSING VALUES SO WE CAN QC MANUALLY LATER
+# =============================================================================
+errors_only = all_metadata.loc[(all_metadata['NAVD88 to MHHW'] == -999999) |\
+                               (all_metadata['NAVD88 to MLLW'] == -999999)]
+
+#columns we want to drop
+cols_2_drop = ['TIME ZONE',
+        'River Waterbody Name', 'HUC2', 'Location Name', 'AHPS Name',
+        'Node', 'Correction', 'Domain', 'VDatum Regions', 'Ref_Datum', 'MHHW', 'MHW',
+        'MTL', 'MSL', 'DTL', 'MLW', 'MLLW', 'NAVD88', 'STND', 'NGVD29',"LMSL",\
+        'NAVD88 to MLLW', 'NAVD88 to MHHW',
+        'nrldb vertical datum name', 'nrldb vertical datum',
+        'navd88 vertical datum', 'ngvd29 vertical datum', 'msl vertical datum',
+        'other vertical datum', 'elevation', 'action stage', 'flood stage',
+        'moderate flood stage', 'major flood stage', 'flood stage unit',
+        'Hydrograph', "VDatum - MLLW", "VDatum - MHHW"]
+
+errors_only = errors_only.drop(columns=cols_2_drop)
+#Rename the columns that have bad (non-descriptive) names
+errors_only = errors_only.rename(columns={'VDATUM Latitude':"New Latitude",\
+                         "VDATUM Longitude":"New Longitude", "VDATUM Height":"New Height"})
 
 
-all_converted_data_final = all_converted_data_MHHW.reindex(columns=reindex_metadata2)
-
-#SAVE FILE
-all_converted_data_final.to_excel("Converted_Datums_for_NWM_Experiment.xlsx", index=False)
+# write the DataFrame to the Excel file
+errors_only.to_excel(writer, index=False, sheet_name='QC VDatum')
+Errors_Only_Sheet = writer.sheets['QC VDatum']
+Errors_Only_Sheet = format_excel(errors_only, Errors_Only_Sheet, styles, hyper_id=False)
+# save the Excel file
+writer.save()

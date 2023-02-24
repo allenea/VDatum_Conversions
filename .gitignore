@@ -5,8 +5,9 @@
 *.xlsx
 vdatum/
 VDatum_KML/
+old_files/
 
 
 # DO-NOT ignore specific file
-!Obs_Locations_Request.xlsx
-!Obs_Location_Requests_All.xlsx
+!Obs_Location_Requests_Science_Eval.xlsx
+!NWM_TWL_Forecast_Locations_SciEval.xlsx
