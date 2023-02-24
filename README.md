@@ -3,7 +3,7 @@
 
 Download VDatum_Conversions from github.
 
-Required Librarires:
+**Required Librarires:**
 - Pandas
 - Geopandas (with Fiona)
 - Numpy
@@ -11,11 +11,11 @@ Required Librarires:
 - Shapely
 - os, sys, requests, json
 
+**Required Data:**
+- Download and unzip https://vdatum.noaa.gov/download/data/vdatum_regional_20221116.zip
+- Download and unzip the following AWIPS Shapefiles: https://www.weather.gov/gis/AWIPSShapefiles
 
-Required Data:
-Download and unzip https://vdatum.noaa.gov/download/data/vdatum_regional_20221116.zip
-Download and unzip the following AWIPS Shapefiles: https://www.weather.gov/gis/AWIPSShapefiles
-
+```
 VDatum_Conversions
 │   README.md
 │   main.py (execute this file)
@@ -51,8 +51,7 @@ VDatum_Conversions
     ----- rf12ja05.shp
     |   w_08mr23
     ----- w_08mr23.shp
-
-
+```
 Once the required libraries are installed, you are on the internet, and you've downloaded and unpacked the vdatum files and AWIPS shapefiles, you can run the following program to process everything: main.py
 
 Input file:
