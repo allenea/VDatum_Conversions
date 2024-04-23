@@ -5,12 +5,9 @@ Created on Thu Feb  9 16:24:11 2023
 
 @author: ericallen
 """
-import os
-import sys
 import pandas as pd
 import requests
 import numpy as np
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from src.check_url import check_url
 from src.find_exception import find_h_ref_exception
 from src.get_urls import create_hyperlink
@@ -65,7 +62,7 @@ def convert_datums(metadata, input_v="NAVD88", output_v="MLLW", input_height=Non
         DESCRIPTION. Holds a list of all the url api calls for future reference
 
     """
-    output_column_header = input_v + " to " + output_v
+    output_column_header = input_v.upper() + " TO " + output_v.upper()
 
 
     input_h_coord = "geo"
@@ -79,15 +76,15 @@ def convert_datums(metadata, input_v="NAVD88", output_v="MLLW", input_height=Non
     url_list = []
     for index, row in metadata.iterrows():
 
-        input_region = row["VDatum Regions"]
-        s_y = row["Latitude"]
-        s_x = row["Longitude"]
+        input_region = row["VDATUM REGIONS"]
+        s_y = row["LATITUDE"]
+        s_x = row["LONGITUDE"]
 
-        input_v_ref = input_v
-        target_v_ref = output_v
+        input_v_ref = input_v.upper()
+        target_v_ref = output_v.upper()
 
         if input_height is None:
-            s_z = row[row["Ref_Datum"]]
+            s_z = row[row["REF_DATUM"]]
         else:
             s_z = input_height
 
@@ -127,15 +124,23 @@ def convert_datums(metadata, input_v="NAVD88", output_v="MLLW", input_height=Non
             input_v_ref = input_v
 
         elif input_region == "prvi":
-            print("WARNING: NWM Uses LMSL for Puerto Rico domain")
-            input_v_ref = "LMSL"
-            input_h_ref = "NAD83_2011"
-            target_h_ref = "NAD83_2011"
+            if input_v_ref == "LMSL" or input_v_ref == "MSL":
+                input_v_ref = "LMSL"
+                input_h_ref = "NAD83_2011"
+                target_h_ref = "NAD83_2011"
+            else:
+                print("WARNING: NWM Uses LMSL for Puerto Rico domain")
+                input_h_ref, target_h_ref = None, None
+
 
         elif input_region == "hi":
-            print("ERROR: VDatum Cannot Handle Conversion from NAVD88 to Tidal Datums for Hawaii")
-            input_v_ref = "LMSL"
-            input_h_ref, target_h_ref = None, None
+            if input_v_ref == "LMSL" or input_v_ref == "MSL":
+                print("WARNING: VDatum doesn't have a conversion from LMSL for hi ")
+                input_v_ref = "LMSL"
+                input_h_ref, target_h_ref = None, None
+            else:
+                print("ERROR: VDatum Cannot Handle Conversion from NAVD88 to Tidal Datums for hi")
+                input_h_ref, target_h_ref = None, None
 
         else:
             print("Triggering find_h_ref_exception")
@@ -161,6 +166,7 @@ def convert_datums(metadata, input_v="NAVD88", output_v="MLLW", input_height=Non
 
 
         if check_url(url):
+            print(url)
             result = requests.get(url).json()
         else:
             #print("PROBLEM WITH: ", url)
@@ -184,7 +190,8 @@ def convert_datums(metadata, input_v="NAVD88", output_v="MLLW", input_height=Non
 
 
 def convert_from_ref_datum(metadata):
-    """Fill in the blanks by converting the reference datum to any un-solved datum conversions"""
+    """DO NOT USE.... Fill in the blanks by converting the reference datum to any
+    un-solved datum conversions"""
 
     input_h_coord = "geo"
     input_v_unit = "us_ft"
@@ -203,23 +210,23 @@ def convert_from_ref_datum(metadata):
 
     for index, row in metadata.iterrows():
 
-        if pd.isna(row["Ref_Datum"]):
+        if pd.isna(row["REF_DATUM"]):
             continue
 
-        if row["Ref_Datum"] == "STND":
+        if row["REF_DATUM"] == "STND":
             continue
 
-        input_v_ref = row['Ref_Datum']
+        input_v_ref = row['REF_DATUM']
 
-        input_region = row["VDatum Regions"]
-        s_y = row["Latitude"]
-        s_x = row["Longitude"]
-        s_z = row[row["Ref_Datum"]]
+        input_region = row["VDATUM REGIONS"]
+        s_y = row["LATITUDE"]
+        s_x = row["LONGITUDE"]
+        s_z = row[row["REF_DATUM"]]
 
         # Loop through the different height columns
         for column in columns:
             # Skip if the value is already available
-            if column == row["Ref_Datum"]:
+            if column == row["REF_DATUM"]:
                 continue
 
             if not column in row.index or pd.isna(row[column]):
@@ -334,9 +341,7 @@ def convert_from_ref_datum(metadata):
                     metadata.loc[index, column] = np.nan
                     continue
 
-
                 t_z = result["t_z"]
-
 
                 if t_z == "-999999":
                     metadata.loc[index, column] = np.nan

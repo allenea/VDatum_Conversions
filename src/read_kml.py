@@ -14,6 +14,7 @@ except:
     from fiona.drvsupport import supported_drivers
     supported_drivers['KML'] = 'rw'
 
+
 def read_kml_file(kml_file):
     """simple read in kml file function with geopandas"""
     return gpd.read_file(kml_file, driver='KML')

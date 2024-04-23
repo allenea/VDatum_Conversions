@@ -58,8 +58,8 @@ master_list_start = master_list_start.drop(["Region", "RFC"], axis=1)
 # READ IN NWS GIS (SHAPEFILE) DATA -- Add to the original list
 # =============================================================================
 all_shp = {}
-shp_files = {"CWA":"w_08mr23.shp", "RFC":"rf12ja05.shp", "MARINE_ZONES":"mz08mr23.shp",\
-             "COUNTIES":"c_08mr23.shp"}
+shp_files = {"CWA":"w_05mr24.shp", "RFC":"rf05mr24.shp", "MARINE_ZONES":"mz05mr24.shp",\
+             "COUNTIES":"c_05mr24.shp"}
 for key, value in shp_files.items():
     all_shp[key] = gpd.read_file(os.path.join(path, "NWS_GIS_Data", value.split(".shp",\
                                                                 maxsplit=1)[0], value))
@@ -193,7 +193,8 @@ datum_metadata["Datum Info"] = station_datum_urls
 # =============================================================================
 #Now we are going to try to fill and datum conversions which are blank, using vdatum
 #  if possible
-datum_metadata = convert_from_ref_datum(datum_metadata)
+## WE DON"T WANT TO DO THIS AND MIX THE TWO....
+#datum_metadata = convert_from_ref_datum(datum_metadata)
 save_df3 = datum_metadata.copy()
 # =============================================================================
 ### NEXT STEP.... we want to get the AHPS datum information and add that to the end
@@ -222,7 +223,7 @@ df_hads = df_hads.drop(["NWS HAS"], axis=1)
 new_df = pd.merge(df_hads, df_cms, on="NWSLI", how="left")
 
 #Drop columns we don't care about -- these are the columns
-columns_to_drop = ['USGS Station Number', 'GOES Identifer', 'latitude_x',
+columns_to_drop = ['GOES Identifer', 'latitude_x',
        'longitude_x', 'proximity', 'location type', 'usgs id', 'latitude_y',
        'longitude_y', 'inundation', 'coeid', 'pedts', 'in service', 'hemisphere',
        'low water threshold value / units', 'forecast status',
@@ -257,7 +258,7 @@ all_datums["Station ID"] = station_info_urls_with_ids
 
 #Then reorder the columns to match what we want...
 df_order2 = ['NWSLI', 'WFO', 'RFC', 'NWS REGION', 'COUNTYNAME', 'STATE', 'TIME ZONE',
-            'Station ID','Longitude', 'Latitude', 'Site Type', 'Data Source',
+            'Station ID','Longitude', 'Latitude', 'Site Type', 'Data Source', 'USGS Station Number', 
             'VDatum Regions', 'Datum Info', 'Ref_Datum', 'MHHW', 'MHW', 'MTL',
             'MSL', 'DTL', 'MLW', 'MLLW', 'NAVD88', 'STND', 'NGVD29', 'LMSL',
             'nrldb vertical datum name', 'nrldb vertical datum', 'navd88 vertical datum',
@@ -362,8 +363,8 @@ errors_only = errors_only.rename(columns={'VDATUM Latitude':"New Latitude",\
 
 
 # write the DataFrame to the Excel file
-errors_only.to_excel(writer, index=False, sheet_name='QC VDatum')
-Errors_Only_Sheet = writer.sheets['QC VDatum']
+errors_only.to_excel(writer, index=False, sheet_name='No VDatum Estimate')
+Errors_Only_Sheet = writer.sheets['No VDatum Estimate']
 Errors_Only_Sheet = format_excel(errors_only, Errors_Only_Sheet, styles, hyper_id=False)
 # save the Excel file
 writer.save()

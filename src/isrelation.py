@@ -13,7 +13,16 @@ def is_west_of(point, longitude):
     :param longitude: The longitude to compare against.
     :return: True if the Point is to the west of the longitude, False otherwise.
     """
-    return point.x < longitude
+    return point.x <= longitude
+
+def is_east_of(point, longitude):
+    """
+    Check if the Point is to the east of the specified longitude.
+    :param point: A Shapely Point object.
+    :param longitude: The longitude to compare against.
+    :return: True if the Point is to the east of the longitude, False otherwise.
+    """
+    return point.x >= longitude
 
 def is_north_of(point, latitude):
     """
@@ -22,4 +31,13 @@ def is_north_of(point, latitude):
     :param latitude: The latitude to compare against.
     :return: True if the Point is to the north of the latitude, False otherwise.
     """
-    return point.y > latitude
+    return point.y >= latitude
+
+def is_south_of(point, latitude):
+    """
+    Check if the Point is to the south of the specified latitude.
+    :param point: A Shapely Point object.
+    :param latitude: The latitude to compare against.
+    :return: True if the Point is to the south of the latitude, False otherwise.
+    """
+    return point.y <= latitude

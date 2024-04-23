@@ -43,14 +43,18 @@ def get_station_info_urls(station_id, source="NOS"):
         DESCRIPTION. the url with station information
 
     """
-    if source.casefold() == "nos":
+    if source.upper() == "NOS":
         #This returns f"https://tidesandcurrents.noaa.gov/stationhome.html?id={station_id}"
         #return extra_link(station_id, api=False)
         return f"https://tidesandcurrents.noaa.gov/stationhome.html?id={station_id}"
 
-    if source.casefold() == "usgs":
-        return f"https://waterdata.usgs.gov/nwis/nwismap/?site_no={station_id}&agency_cd=USGS"
+    if source.upper() == "USGS":
+        return f"https://waterdata.usgs.gov/monitoring-location/{station_id}/"
+        #return f"https://waterdata.usgs.gov/nwis/nwismap/?site_no={station_id}&agency_cd=USGS"
 
+    if source.upper() == "USACE":
+        return f"https://rivergages.mvr.usace.army.mil/WaterControl/stationinfo2.cfm?sid={station_id}"
+ 
     return None
 
 
@@ -105,7 +109,7 @@ def get_station_datum_urls(station_id, source="NOS", ref_datum=None, fmt="rdb"):
     ValueError
         If the source is not supported.
     """
-    if source.casefold() == "nos":
+    if source.upper() == "NOS":
         if ref_datum is None:
             raise ValueError("For NOS source, ref_datum parameter is required.")
 
@@ -116,7 +120,7 @@ def get_station_datum_urls(station_id, source="NOS", ref_datum=None, fmt="rdb"):
             url = (f"https://tidesandcurrents.noaa.gov/datums.html?datum={ref_datum}&units=0&"
                    f"epoch=0&id={station_id}")
 
-    elif source.casefold() == "usgs":
+    elif source.upper() == "USGS":
 
         acceptable_fmts = ["rdb", "rdb,1.0", "gm", "gm,1.0", "ge", "ge,1.0", "mapper", "mapper,1.0"]
 
@@ -126,6 +130,7 @@ def get_station_datum_urls(station_id, source="NOS", ref_datum=None, fmt="rdb"):
 
         url = f"https://waterservices.usgs.gov/nwis/site/?site={station_id}&format={fmt}"
 
+    ## TODO add other data sources
     else:
         raise ValueError(f"Unsupported source: {source}")
 
