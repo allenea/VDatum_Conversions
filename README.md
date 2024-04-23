@@ -12,7 +12,7 @@ Download VDatum_Conversions from github.
 - os, sys, requests, json
 
 **Required Data:**
-- Download and unzip https://vdatum.noaa.gov/download/data/vdatum_regional_20221116.zip
+- Download and unzip https://vdatum.noaa.gov/download/data/vdatum_regional_20230907.zip
 - Download and unzip the following AWIPS Shapefiles: https://www.weather.gov/gis/AWIPSShapefiles
 
 ```
@@ -38,15 +38,15 @@ VDatum_Conversions
 │   │   VDatum_Region_Selection.py
 │
 │   
-└─── vdatum (REQUIRED: Download and unzip https://vdatum.noaa.gov/download/data/vdatum_regional_20221116.zip HERE)
+└─── vdatum (REQUIRED: Download and unzip https://vdatum.noaa.gov/download/data/vdatum_regional_20230907.zip HERE)
     │   VariousFolders1
     │   VariousFolders2
     ....
-└─── NWS_GIS_Data (REQUIRED: Download and unzip the following AWIPS Shapefiles HERE)
-    │   c_08_mr23
-    ----- c_08_mr23.shp
-    │   mz08mr23
-    ----- mz08mr23.shp
+└─── NWS_GIS_Data (REQUIRED: Download and unzip the following AWIPS Shapefiles HERE, check for latest files - names may change)
+    │   c_19se23
+    ----- c_19se23.shp
+    │   mz19se23
+    ----- mz19se23.shp
     |   rf12ja05
     ----- rf12ja05.shp
     |   w_08mr23
